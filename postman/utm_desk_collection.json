@@ -1,0 +1,41 @@
+{
+  "info": {
+    "_postman_id": "5b328fb3-85c1-4e53-86b1-3a40d927b3cb",
+    "name": "UTM Desk API",
+    "description": "Colección inicial para probar la API del proyecto.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('responde con estado 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('la API está disponible', function () {",
+              "    pm.expect(pm.response.json()).to.have.property('status', 'ok');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/health"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ]
+}
