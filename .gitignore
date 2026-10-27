@@ -1,0 +1,21 @@
+# Secretos — nunca al repo público
+.env
+.env.*
+!.env.example
+
+# Dependencias
+node_modules/
+
+# Compilados TypeScript
+dist/
+
+# Respaldos de base de datos (solo locales)
+database/backups/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistemas operativos
+.DS_Store
+Thumbs.db
