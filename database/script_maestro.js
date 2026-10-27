@@ -48,6 +48,7 @@ const { error: envError } = config({ path: ENV_PATH });
 // ── Flags CLI ─────────────────────────────────────────────────────────────────
 const DRY_RUN         = process.argv.includes('--dry-run');
 const RESET_ADMIN_PW  = process.argv.includes('--reset-admin-password');
+const RESEED          = process.argv.includes('--reseed');
 
 if (DRY_RUN) {
   console.log('\n╔══════════════════════════════════════════╗');
@@ -60,7 +61,7 @@ import {
   DB_NAME as DEFAULT_DB_NAME,
   CATEGORIAS, ESTADOS, ESTADOS_CERRADOS, PRIORIDADES, ROLES, TIPOS_REPORTANTE,
   COL_INCIDENCIAS, COL_CONTADORES, COL_USUARIOS,
-  IDX_COMPUESTO, IDX_TEXTO, IDX_TTL, IDX_UNICO_FOLIO,
+  IDX_COMPUESTO, IDX_TEXTO, IDX_TTL, IDX_UNICO_FOLIO, IDX_UNICO_CORREO,
   TTL_SEGUNDOS, CONTADOR_ID, FOLIO_ANIO, FOLIO_PATTERN,
 } from './constants.js';
 
@@ -94,7 +95,13 @@ const section = (title) => console.log(`\n▶ ${title}`);
 function safeHost(uri) {
   if (!uri) return '(MONGODB_URI no disponible en dry-run)';
   try {
-    return new URL(uri).host;
+    const atIndex = uri.indexOf('@');
+    if (atIndex !== -1) {
+      const rest = uri.slice(atIndex + 1);
+      return rest.split('/')[0].split('?')[0];
+    }
+    const match = uri.match(/mongodb(?:\+srv)?:\/\/([^/?]+)/);
+    return match ? match[1] : '(host desconocido)';
   } catch {
     return '(host no parseable)';
   }
@@ -300,9 +307,9 @@ const VALIDATOR = {
   },
 };
 
-// ── Definición de los 4 índices obligatorios ──────────────────────────────────
+// ── Definición de índices obligatorios ────────────────────────────────────────
 
-const INDICES_DESEADOS = [
+const INDICES_INCIDENCIAS = [
   {
     // Índice 1 — Compuesto: aprovechado por el pipeline analítico
     // y por consultas filtradas por categoría + estado + edificio.
@@ -337,6 +344,79 @@ const INDICES_DESEADOS = [
     options: { unique: true },
   },
 ];
+
+const INDICES_USUARIOS = [
+  {
+    // Índice único sobre correo institucional
+    name: IDX_UNICO_CORREO,
+    key: { correo: 1 },
+    options: { unique: true },
+  },
+];
+
+/**
+ * Sincroniza un índice de forma idempotente y profunda:
+ * 1. Inspecciona índices existentes con listIndexes.
+ * 2. Compara clave y opciones.
+ * 3. Si no existe → crea (reporta 'creado').
+ * 4. Si existe e idéntico → no hace nada (reporta 'igual').
+ * 5. Si solo difiere en expireAfterSeconds → usa collMod (reporta 'modificado').
+ * 6. Si difiere en clave u otras opciones → dropIndex + createIndex (reporta 'recreado').
+ */
+async function sincronizarIndice(db, colNombre, defIndice) {
+  const col = db.collection(colNombre);
+  const indices = await col.indexes();
+  const existente = indices.find(i => i.name === defIndice.name);
+
+  if (!existente) {
+    // Si es índice de texto, verificar si existe uno colisionante auto-nombrado
+    const esTexto = Object.values(defIndice.key).includes('text');
+    if (esTexto) {
+      const colision = indices.find(i => i.name !== '_id_' && Object.values(i.key ?? {}).includes('text'));
+      if (colision) {
+        warn(`Índice de texto colisionante "${colision.name}" detectado en ${colNombre} → drop.`);
+        await col.dropIndex(colision.name);
+      }
+    }
+    await col.createIndex(defIndice.key, { name: defIndice.name, ...defIndice.options });
+    log(`[CREADO] Índice "${defIndice.name}" en "${colNombre}".`);
+    return 'creado';
+  }
+
+  // Comparación de claves y opciones
+  const mismaClave = JSON.stringify(existente.key) === JSON.stringify(defIndice.key);
+  const mismoUnique = Boolean(existente.unique) === Boolean(defIndice.options?.unique);
+  const mismoSparse = Boolean(existente.sparse) === Boolean(defIndice.options?.sparse);
+  const ttlExistente = existente.expireAfterSeconds;
+  const ttlDeseado = defIndice.options?.expireAfterSeconds;
+  const mismoTTL = ttlExistente === ttlDeseado;
+
+  if (mismaClave && mismoUnique && mismoSparse) {
+    if (mismoTTL) {
+      log(`[IGUAL] Índice "${defIndice.name}" en "${colNombre}" sin cambios (definición idéntica).`);
+      return 'igual';
+    }
+    if (ttlDeseado !== undefined) {
+      // Diferencia únicamente en expireAfterSeconds → usar collMod
+      await db.command({
+        collMod: colNombre,
+        index: {
+          keyPattern: defIndice.key,
+          expireAfterSeconds: ttlDeseado,
+        },
+      });
+      log(`[MODIFICADO] Índice TTL "${defIndice.name}" en "${colNombre}": expireAfterSeconds actualizado a ${ttlDeseado}s vía collMod.`);
+      return 'modificado';
+    }
+  }
+
+  // Difiere en clave o restricciones clave → recrear
+  warn(`[RECREANDO] Índice "${defIndice.name}" en "${colNombre}" difiere en opciones → drop + createIndex.`);
+  await col.dropIndex(defIndice.name);
+  await col.createIndex(defIndice.key, { name: defIndice.name, ...defIndice.options });
+  log(`[RECREADO] Índice "${defIndice.name}" en "${colNombre}" recreado exitosamente.`);
+  return 'recreado';
+}
 
 // ── Generador de datos sintéticos ─────────────────────────────────────────────
 
@@ -903,45 +983,43 @@ async function main() {
     }
 
     // ── 4. Índices ─────────────────────────────────────────────────────────────
-    section(`4. Índices en "${COL_INCIDENCIAS}" (4 obligatorios)`);
+    section(`4. Índices ("${COL_INCIDENCIAS}" y "${COL_USUARIOS}")`);
     if (DRY_RUN) {
-      for (const idx of INDICES_DESEADOS) {
-        dry(`createIndex(${JSON.stringify(idx.key)}, { name: "${idx.name}"${Object.keys(idx.options).length ? ', ' + JSON.stringify(idx.options) : ''} })`);
+      dry(`Índices obligatorios para "${COL_INCIDENCIAS}":`);
+      for (const idx of INDICES_INCIDENCIAS) {
+        dry(`  • ${idx.name} → key: ${JSON.stringify(idx.key)} options: ${JSON.stringify(idx.options)}`);
       }
-      dry('Lógica de idempotencia: si el índice ya existe con ese nombre → skip.');
-      dry('Si hay un índice de texto sin nombre explícito → drop + recrear con nombre correcto.');
+      dry(`Índices obligatorios para "${COL_USUARIOS}":`);
+      for (const idx of INDICES_USUARIOS) {
+        dry(`  • ${idx.name} → key: ${JSON.stringify(idx.key)} options: ${JSON.stringify(idx.options)}`);
+      }
+      dry('Lógica de idempotencia: listIndexes para comparar key y opciones.');
+      dry('  - Si son iguales → no toca (reporta igual).');
+      dry('  - Si solo difiere expireAfterSeconds → collMod (reporta modificado).');
+      dry('  - Si difieren otras opciones o key → dropIndex + createIndex (reporta recreado).');
     } else {
-      const col       = db.collection(COL_INCIDENCIAS);
-      const existentes = await col.indexes();
-      const porNombre  = Object.fromEntries(existentes.map(i => [i.name, i]));
-
-      for (const idx of INDICES_DESEADOS) {
-        if (porNombre[idx.name]) {
-          log(`Índice "${idx.name}" ya existe — sin cambios.`);
-          continue;
-        }
-        // Detectar colisión de índice texto auto-nombrado
-        const esTexto = Object.values(idx.key).includes('text');
-        if (esTexto) {
-          const textoColision = existentes.find(
-            i => i.name !== '_id_' && Object.values(i.key ?? {}).includes('text'),
-          );
-          if (textoColision) {
-            warn(`Índice de texto "${textoColision.name}" sin nombre correcto → drop + recrear.`);
-            await col.dropIndex(textoColision.name);
-          }
-        }
-        await col.createIndex(idx.key, { name: idx.name, ...idx.options });
-        log(`Índice "${idx.name}" creado.`);
+      for (const idx of INDICES_INCIDENCIAS) {
+        await sincronizarIndice(db, COL_INCIDENCIAS, idx);
+      }
+      for (const idx of INDICES_USUARIOS) {
+        await sincronizarIndice(db, COL_USUARIOS, idx);
       }
     }
 
     // ── 5. Documentos sintéticos ───────────────────────────────────────────────
-    section(`5. Documentos sintéticos — ${documentos.length} docs, upsert $setOnInsert por "codigo"`);
+    section(`5. Documentos sintéticos — ${documentos.length} docs (${COL_INCIDENCIAS})`);
+    const foliosSinteticos = documentos.map(d => d.codigo);
+
     if (DRY_RUN) {
-      dry(`Operación: updateOne({ codigo }, { $setOnInsert: <doc completo> }, { upsert: true })`);
-      dry(`  → Si el código YA existe: no modifica nada (protege ediciones manuales y fechas).`);
-      dry(`  → Si NO existe: inserta el documento completo.`);
+      if (RESEED) {
+        dry(`[FLAG --reseed ACTIVO]:`);
+        dry(`  deleteMany({ codigo: { $in: ["${foliosSinteticos[0]}" ... "${foliosSinteticos[foliosSinteticos.length - 1]}"] } })`);
+        dry(`  → Se eliminarán ÚNICAMENTE los 25 folios sintéticos para reinserción fresca.`);
+      } else {
+        dry(`Modo seguro por defecto (sin --reseed):`);
+        dry(`  updateOne({ codigo }, { $setOnInsert: <doc completo> }, { upsert: true })`);
+        dry(`  → Si el código YA existe: no modifica nada (protege ediciones manuales y fechas).`);
+      }
       dry(`Categorías: computo_redes ×${documentos.filter(d => d.categoria === 'computo_redes').length}, ` +
           `infraestructura_fisica ×${documentos.filter(d => d.categoria === 'infraestructura_fisica').length}, ` +
           `servicios_academicos ×${documentos.filter(d => d.categoria === 'servicios_academicos').length}`);
@@ -952,6 +1030,12 @@ async function main() {
       dry(`Validación de fechas: OK — todas las fecha_cierre ≤ 45 días. Ningún estado abierto tiene fecha_cierre.`);
     } else {
       const col = db.collection(COL_INCIDENCIAS);
+
+      if (RESEED) {
+        const delRes = await col.deleteMany({ codigo: { $in: foliosSinteticos } });
+        log(`--reseed: Eliminados ${delRes.deletedCount} documentos sintéticos previos (${foliosSinteticos[0]} a ${foliosSinteticos[foliosSinteticos.length - 1]}).`);
+      }
+
       let insertados = 0, omitidos = 0;
       for (const doc of documentos) {
         const { codigo, ...resto } = doc;

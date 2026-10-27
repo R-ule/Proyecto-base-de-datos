@@ -65,10 +65,11 @@ export const TIPOS_REPORTANTE = /** @type {const} */ ([
 
 // ── Nombres de índices (explícitos para idempotencia) ─────────────────────────
 
-export const IDX_COMPUESTO   = 'idx_categoria_estado_edificio';
-export const IDX_TEXTO       = 'idx_texto_espanol';
-export const IDX_TTL         = 'idx_ttl_fecha_cierre';
-export const IDX_UNICO_FOLIO = 'idx_unico_codigo';
+export const IDX_COMPUESTO    = 'idx_categoria_estado_edificio';
+export const IDX_TEXTO        = 'idx_texto_espanol';
+export const IDX_TTL          = 'idx_ttl_fecha_cierre';
+export const IDX_UNICO_FOLIO  = 'idx_unico_codigo';
+export const IDX_UNICO_CORREO = 'idx_unico_correo';
 
 // ── TTL ───────────────────────────────────────────────────────────────────────
 
