@@ -64,7 +64,8 @@ function safeHost(uri) {
 
 async function runVerification() {
   const client = new MongoClient(MONGODB_URI, {
-    serverApi: { version: ServerApiVersion.v1, strict: true, deprecationErrors: true },
+    // strict: false porque strict: true bloquea los índices y consultas de texto ($text), que son un requisito del proyecto
+    serverApi: { version: ServerApiVersion.v1, strict: false, deprecationErrors: true },
   });
 
   let totalTests = 0;

@@ -85,6 +85,7 @@ if (RESET_ADMIN_PW && !DRY_RUN && !SUPER_PASSWORD)
 const log     = (msg) => console.log(`  ✔ ${msg}`);
 const warn    = (msg) => console.warn(`  ⚠ ${msg}`);
 const dry     = (msg) => console.log(`  [DRY-RUN] ${msg}`);
+const info    = (msg) => console.log(DRY_RUN ? `  [DRY-RUN] ${msg}` : `  ${msg}`);
 const section = (title) => console.log(`\n▶ ${title}`);
 
 /**
@@ -925,14 +926,15 @@ async function main() {
   try {
     // ── 1. Conexión ────────────────────────────────────────────────────────────
     section('1. Conexión a MongoDB Atlas');
-    dry(`Archivo .env: ${ENV_PATH}`);
-    dry(`  Estado carga: ${envError ? `ERROR — ${envError.message}` : 'OK'}`);
-    dry(`Base destino: "${DB_NAME}" (MONGODB_DB_NAME en .env; default de constants.js: "${DEFAULT_DB_NAME}")`);
-    dry(`Host Atlas: ${safeHost(MONGODB_URI)}`);
+    info(`Archivo .env: ${ENV_PATH}`);
+    info(`  Estado carga: ${envError ? `ERROR — ${envError.message}` : 'OK'}`);
+    info(`Base destino: "${DB_NAME}" (MONGODB_DB_NAME en .env; default de constants.js: "${DEFAULT_DB_NAME}")`);
+    info(`Host Atlas: ${safeHost(MONGODB_URI)}`);
 
     if (!DRY_RUN) {
       client = new MongoClient(MONGODB_URI, {
-        serverApi: { version: ServerApiVersion.v1, strict: true, deprecationErrors: true },
+        // strict: false porque strict: true bloquea los índices y consultas de texto ($text), que son un requisito del proyecto
+        serverApi: { version: ServerApiVersion.v1, strict: false, deprecationErrors: true },
       });
       await client.connect();
       log(`Conectado — host: ${safeHost(MONGODB_URI)} — base: ${DB_NAME}`);
