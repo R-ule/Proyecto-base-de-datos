@@ -1,0 +1,247 @@
+// Variables de color
+$primary: #0f766e;
+$primary-hover: #115e59;
+$text-main: #1e293b;
+$text-muted: #64748b;
+$border-color: #e2e8f0;
+$bg-light: #f8fafc;
+$success: #10b981;
+
+.admin-container {
+  padding: 2rem;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: $text-main;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+
+  .breadcrumb {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: $text-muted;
+    letter-spacing: 0.05em;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    margin: 0.5rem 0;
+    color: $text-main;
+  }
+
+  p {
+    color: $text-muted;
+    margin: 0;
+  }
+}
+
+// Botones generales
+.btn-primary {
+  background-color: $primary;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  &:hover { background-color: $primary-hover; }
+}
+
+.btn-outline {
+  background-color: white;
+  border: 1px solid $border-color;
+  color: $text-main;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  &:hover { background-color: $bg-light; }
+}
+
+// Grid de Estadísticas
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+
+  .stat-card {
+    background: white;
+    border: 1px solid $border-color;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+
+    .stat-header {
+      display: flex;
+      justify-content: space-between;
+      color: $text-muted;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-footer {
+      font-size: 0.75rem;
+      color: $text-muted;
+    }
+  }
+}
+
+// Paneles central y tablas
+.panel {
+  background: white;
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.middle-panels {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.badge {
+  background: #f1f5f9;
+  color: $text-muted;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+  
+  &.warning-badge {
+    background: #fef3c7;
+    color: #92400e;
+  }
+}
+
+// Tablas
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+
+  th {
+    text-align: left;
+    font-size: 0.75rem;
+    color: $text-muted;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid $border-color;
+  }
+
+  td {
+    padding: 1rem 0;
+    border-bottom: 1px solid $border-color;
+    font-size: 0.875rem;
+  }
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    background: #e0f2fe;
+    color: #0284c7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.75rem;
+  }
+
+  .email {
+    display: block;
+    color: $text-muted;
+    font-size: 0.75rem;
+  }
+}
+
+.status-active { color: $success; }
+.link-action { color: $primary; text-decoration: none; font-weight: 500; }
+.text-teal { color: $primary; }
+.text-muted { color: $text-muted; }
+.d-block { display: block; }
+
+// Elementos específicos de Revisión
+.proposal-input input {
+  border: 1px solid $primary;
+  border-radius: 4px;
+  padding: 0.4rem;
+  width: 80%;
+  margin-top: 0.5rem;
+}
+
+.tag-revision {
+  font-size: 0.75rem;
+  color: $text-muted;
+}
+
+.audit-footer {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  color: $text-muted;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+// Progreso (Panorama)
+.progress-item {
+  margin: 1.5rem 0;
+  
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .progress-bar-bg {
+    background: $bg-light;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    
+    .progress-bar-fill {
+      background: $primary;
+      height: 100%;
+    }
+  }
+}
+
+.panorama-footer {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid $border-color;
+  padding-top: 1rem;
+  font-size: 0.875rem;
+  color: $text-muted;
+  
+  .percentage-success {
+    color: $success;
+    font-weight: 600;
+    font-size: 1.25rem;
+  }
+}

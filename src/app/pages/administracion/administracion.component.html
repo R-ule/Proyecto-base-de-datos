@@ -1,0 +1,137 @@
+<div class="admin-container">
+  <!-- Cabecera de la sección -->
+  <header class="admin-header">
+    <div class="header-titles">
+      <span class="breadcrumb">ADMINISTRACIÓN / VISIÓN GLOBAL</span>
+      <h1>Un sistema claro, un mejor servicio</h1>
+      <p>Supervisa la operación, gestiona accesos y mantén la calidad de los reportes.</p>
+    </div>
+    <button class="btn-outline export-btn">
+      <i class="icon-download"></i> Exportar resumen
+    </button>
+  </header>
+
+  <!-- Tarjetas de Estadísticas -->
+  <section class="stats-grid">
+    <div class="stat-card" *ngFor="let stat of estadisticas">
+      <div class="stat-header">
+        <h3>{{ stat.titulo }}</h3>
+        <i class="icon-{{ stat.icono }}"></i>
+      </div>
+      <div class="stat-value">{{ stat.valor }}</div>
+      <div class="stat-footer">{{ stat.subtitulo }}</div>
+    </div>
+  </section>
+
+  <!-- Panel Central (Panorama y Usuarios) -->
+  <section class="middle-panels">
+    <!-- Panorama de operación -->
+    <div class="panel panorama-panel">
+      <div class="panel-header">
+        <h2>Panorama de operación <i class="icon-chart"></i></h2>
+        <span class="subtitle">Reportes activos por categoría · Octubre 2026</span>
+      </div>
+      <div class="progress-list">
+        <div class="progress-item" *ngFor="let item of panorama">
+          <div class="progress-labels">
+            <span>{{ item.categoria }}</span>
+            <span>{{ item.valor }}</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" [style.width]="item.porcentaje"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panorama-footer">
+        <span>Atendidos dentro del plazo</span>
+        <span class="percentage-success">92%</span>
+      </div>
+    </div>
+
+    <!-- Control de usuarios -->
+    <div class="panel users-panel">
+      <div class="panel-header flex-between">
+        <h2>Control de usuarios <span class="badge">86</span></h2>
+        <button class="btn-primary"><i class="icon-plus"></i> Invitar usuario</button>
+      </div>
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>USUARIO</th>
+            <th>PERFIL</th>
+            <th>ESTADO</th>
+            <th>ACCIÓN</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let usr of usuarios">
+            <td class="user-info">
+              <div class="avatar">{{ usr.iniciales }}</div>
+              <div>
+                <strong>{{ usr.nombre }}</strong>
+                <span class="email">{{ usr.email }}</span>
+              </div>
+            </td>
+            <td>{{ usr.perfil }} <i class="icon-chevron-down"></i></td>
+            <td class="status-active">{{ usr.estado }}</td>
+            <td><a href="#" class="link-action">Editar</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="panel-footer">
+        <span>3 de 86 usuarios · Todos los perfiles</span>
+        <a href="#" class="link-action">Gestionar usuarios →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Revisión de contenido -->
+  <section class="panel review-panel">
+    <div class="panel-header flex-between">
+      <div>
+        <h2>Revisión de contenido <span class="badge warning-badge">8 por revisar</span></h2>
+        <span class="subtitle">Corrige etiquetas, solicita claridad y retira contenido que no corresponde.</span>
+      </div>
+      <button class="btn-outline dropdown-btn">Todos los motivos <i class="icon-chevron-down"></i></button>
+      <a href="#" class="link-action view-queue">Ver cola →</a>
+    </div>
+    
+    <table class="review-table">
+      <thead>
+        <tr>
+          <th>ORIGEN</th>
+          <th>CONTENIDO DETECTADO</th>
+          <th>REVISIÓN / PROPUESTA</th>
+          <th>ACCIÓN</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let rev of revisiones">
+          <td>
+            <strong class="text-teal">{{ rev.id }}</strong>
+            <span class="d-block text-muted">{{ rev.tipo }}</span>
+          </td>
+          <td>
+            <strong>{{ rev.detectado }}</strong>
+            <span class="d-block text-muted">{{ rev.contexto }}</span>
+          </td>
+          <td class="proposal-cell">
+            <span class="tag-revision" [ngClass]="{'tag-warning': rev.tagRevision === 'Falta contexto', 'tag-danger': rev.tagRevision === 'No corresponde'}">{{ rev.tagRevision }}</span>
+            <div class="proposal-input" *ngIf="rev.propuesta === 'encendido'; else textPropuesta">
+              <input type="text" [value]="rev.propuesta"> <i class="icon-edit"></i>
+            </div>
+            <ng-template #textPropuesta>
+              <p class="text-muted mt-1">{{ rev.propuesta }}</p>
+            </ng-template>
+          </td>
+          <td>
+            <button [class]="rev.btnClass">{{ rev.accionBtn }}</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="panel-footer audit-footer">
+      <i class="icon-history"></i> Los cambios conservan el texto original, notifican al reportante y quedan en el historial de auditoría. <a href="#" class="link-action">Ver historial →</a>
+    </div>
+  </section>
+</div>

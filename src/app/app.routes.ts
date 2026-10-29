@@ -32,7 +32,7 @@ export const routes: Routes = [
         title: 'Detalle de reporte | nexo',
         data: { label: 'Detalle de reporte' },
         loadComponent: () =>
-          import('./pages/detalle-reporte/detalle-reporte.component').then((m) => m.DetalleReporteComponent),
+          import('./pages/detalles-reporte/detalle-reporte.component').then((m) => m.DetalleReporteComponent),
       },
       {
         path: 'levantar-reporte',
