@@ -1,9 +1,9 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { SesionService } from './sesion.service';
+import { Rol, SesionService } from './sesion.service';
 
-/** Solo el perfil Encargado puede entrar; los demás vuelven al inicio. */
-export const soloEncargado: CanActivateFn = () => {
+/** Solo los perfiles indicados pueden entrar; los demás vuelven a su pantalla de inicio. */
+export const soloRoles = (...permitidos: Rol[]): CanActivateFn => () => {
   const sesion = inject(SesionService);
-  return sesion.esEncargado() ? true : inject(Router).createUrlTree(['/inicio']);
+  return permitidos.includes(sesion.rol()) ? true : inject(Router).createUrlTree([sesion.rutaInicial()]);
 };

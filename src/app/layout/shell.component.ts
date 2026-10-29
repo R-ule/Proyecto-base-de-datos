@@ -1,11 +1,11 @@
-import { Component, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, HostListener, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
 import { IconComponent, IconName } from '../core/icon.component';
 import { Rol, SesionService } from '../core/sesion.service';
 
-interface ItemMenu { ruta: string; texto: string; icono: IconName; }
+interface ItemMenu { ruta: string; texto: string; icono: IconName; badge?: number; }
 
 @Component({
   selector: 'app-shell',
@@ -26,10 +26,23 @@ export class ShellComponent {
     { ruta: '/explorar', texto: 'Explorar reportes', icono: 'search' },
   ];
 
-  /** Solo visible para el perfil Encargado. */
-  readonly gestion: ItemMenu[] = [
-    { ruta: '/panel-atencion', texto: 'Panel de atención', icono: 'wrench' },
-  ];
+  /** Sección "Gestión": cambia según el perfil (el reportante no la ve). */
+  readonly gestion = computed<ItemMenu[]>(() => {
+    const panel: ItemMenu = { ruta: '/panel-atencion', texto: 'Panel de atención', icono: 'wrench' };
+    switch (this.sesion.rol()) {
+      case 'encargado':
+        return [panel];
+      case 'administrador':
+        return [
+          panel,
+          { ruta: '/administracion', texto: 'Administración', icono: 'shield' },
+          { ruta: '/usuarios', texto: 'Usuarios', icono: 'users' },
+          { ruta: '/moderacion', texto: 'Moderación', icono: 'filter', badge: 8 },
+        ];
+      default:
+        return [];
+    }
+  });
 
   readonly menuAbierto = signal(false);
   readonly menuPerfil = signal(false);

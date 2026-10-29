@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { soloEncargado } from './core/guards';
+import { soloRoles } from './core/guards';
 
 const pendiente = (label: string, descripcion: string, title = `${label} | nexo`) => ({
   path: '',
@@ -45,10 +45,20 @@ export const routes: Routes = [
         path: 'panel-atencion',
         title: 'Panel de atención | nexo',
         data: { label: 'Panel de atención' },
-        canActivate: [soloEncargado],
+        canActivate: [soloRoles('encargado', 'administrador')],
         loadComponent: () =>
           import('./pages/panel-atencion/panel-atencion.component').then((m) => m.PanelAtencionComponent),
       },
+      {
+        path: 'administracion',
+        title: 'Administración | nexo',
+        data: { label: 'Administración' },
+        canActivate: [soloRoles('administrador')],
+        loadComponent: () =>
+          import('./pages/administracion/administracion.component').then((m) => m.AdministracionComponent),
+      },
+      { ...pendiente('Usuarios', 'Aquí se gestionarán los usuarios y sus perfiles. Pantalla pendiente de construir.'), path: 'usuarios', canActivate: [soloRoles('administrador')] },
+      { ...pendiente('Moderación', 'Aquí estará la cola completa de contenido por revisar. Pantalla pendiente de construir.'), path: 'moderacion', canActivate: [soloRoles('administrador')] },
       { ...pendiente('Mis reportes', 'Aquí verás todos los reportes que has levantado. Pantalla pendiente de construir.'), path: 'mis-reportes' },
       { ...pendiente('Siguiendo', 'Aquí verás los reportes de otras personas que sigues. Pantalla pendiente de construir.'), path: 'siguiendo' },
       { ...pendiente('Explorar reportes', 'Aquí podrás buscar fallas ya reportadas para seguirlas sin duplicar. Pantalla pendiente de construir.'), path: 'explorar' },

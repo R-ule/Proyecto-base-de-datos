@@ -1,137 +1,137 @@
-<div class="admin-container">
-  <!-- Cabecera de la sección -->
-  <header class="admin-header">
-    <div class="header-titles">
-      <span class="breadcrumb">ADMINISTRACIÓN / VISIÓN GLOBAL</span>
-      <h1>Un sistema claro, un mejor servicio</h1>
-      <p>Supervisa la operación, gestiona accesos y mantén la calidad de los reportes.</p>
-    </div>
-    <button class="btn-outline export-btn">
-      <i class="icon-download"></i> Exportar resumen
-    </button>
-  </header>
+<header class="hero">
+  <div>
+    <p class="eyebrow">Administración / Visión global</p>
+    <h1>Un sistema claro, un mejor servicio</h1>
+    <p class="lead">Supervisa la operación, gestiona accesos y mantén la calidad de los reportes.</p>
+  </div>
+  <button type="button" class="btn-sec" (click)="exportar()">
+    <app-icon name="download" [size]="18" /> Exportar resumen
+  </button>
+</header>
 
-  <!-- Tarjetas de Estadísticas -->
-  <section class="stats-grid">
-    <div class="stat-card" *ngFor="let stat of estadisticas">
-      <div class="stat-header">
-        <h3>{{ stat.titulo }}</h3>
-        <i class="icon-{{ stat.icono }}"></i>
+<section class="stats" aria-label="Indicadores generales">
+  @for (s of estadisticas; track s.titulo) {
+    <article class="stat">
+      <div class="stat-top"><span>{{ s.titulo }}</span><app-icon [name]="s.icono" /></div>
+      <strong>{{ s.valor }}</strong>
+      <p>{{ s.subtitulo }}</p>
+    </article>
+  }
+</section>
+
+<div class="medio">
+  <section class="card panorama">
+    <div class="cab">
+      <div>
+        <h2>Panorama de operación</h2>
+        <p class="sub">Reportes activos por categoría · Octubre 2026</p>
       </div>
-      <div class="stat-value">{{ stat.valor }}</div>
-      <div class="stat-footer">{{ stat.subtitulo }}</div>
+      <app-icon name="chart" class="acento" />
     </div>
+    <ul class="barras">
+      @for (p of panorama; track p.categoria) {
+        <li>
+          <div><span>{{ p.categoria }}</span><span>{{ p.valor }}</span></div>
+          <span class="pista"><span class="relleno" [style.width.%]="p.ancho"></span></span>
+        </li>
+      }
+    </ul>
+    <div class="plazo"><span>Atendidos dentro del plazo</span><strong>92%</strong></div>
   </section>
 
-  <!-- Panel Central (Panorama y Usuarios) -->
-  <section class="middle-panels">
-    <!-- Panorama de operación -->
-    <div class="panel panorama-panel">
-      <div class="panel-header">
-        <h2>Panorama de operación <i class="icon-chart"></i></h2>
-        <span class="subtitle">Reportes activos por categoría · Octubre 2026</span>
-      </div>
-      <div class="progress-list">
-        <div class="progress-item" *ngFor="let item of panorama">
-          <div class="progress-labels">
-            <span>{{ item.categoria }}</span>
-            <span>{{ item.valor }}</span>
-          </div>
-          <div class="progress-bar-bg">
-            <div class="progress-bar-fill" [style.width]="item.porcentaje"></div>
-          </div>
-        </div>
-      </div>
-      <div class="panorama-footer">
-        <span>Atendidos dentro del plazo</span>
-        <span class="percentage-success">92%</span>
-      </div>
+  <section class="card tabla">
+    <div class="cab fila-cab">
+      <h2>Control de usuarios <span class="pill">86</span></h2>
+      <button type="button" class="btn-primary"><app-icon name="plus" [size]="18" /> Invitar usuario</button>
     </div>
-
-    <!-- Control de usuarios -->
-    <div class="panel users-panel">
-      <div class="panel-header flex-between">
-        <h2>Control de usuarios <span class="badge">86</span></h2>
-        <button class="btn-primary"><i class="icon-plus"></i> Invitar usuario</button>
-      </div>
-      <table class="users-table">
-        <thead>
+    <table>
+      <thead><tr><th>Usuario</th><th>Perfil</th><th>Estado</th><th>Acción</th></tr></thead>
+      <tbody>
+        @for (u of usuarios(); track u.email) {
           <tr>
-            <th>USUARIO</th>
-            <th>PERFIL</th>
-            <th>ESTADO</th>
-            <th>ACCIÓN</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let usr of usuarios">
-            <td class="user-info">
-              <div class="avatar">{{ usr.iniciales }}</div>
-              <div>
-                <strong>{{ usr.nombre }}</strong>
-                <span class="email">{{ usr.email }}</span>
+            <td>
+              <div class="persona">
+                <span class="avatar" aria-hidden="true">{{ u.iniciales }}</span>
+                <span><strong>{{ u.nombre }}</strong><small>{{ u.email }}</small></span>
               </div>
             </td>
-            <td>{{ usr.perfil }} <i class="icon-chevron-down"></i></td>
-            <td class="status-active">{{ usr.estado }}</td>
-            <td><a href="#" class="link-action">Editar</a></td>
+            <td>
+              <label class="sel">
+                <select [attr.aria-label]="'Perfil de ' + u.nombre" (change)="cambiarPerfil(u.email, perfilSel.value)" #perfilSel>
+                  @for (p of perfiles; track p) { <option [value]="p" [selected]="p === u.perfil">{{ p }}</option> }
+                </select>
+                <app-icon name="chevron-down" [size]="14" />
+              </label>
+            </td>
+            <td class="activo">{{ u.estado }}</td>
+            <td><button type="button" class="enlace">Editar</button></td>
           </tr>
-        </tbody>
-      </table>
-      <div class="panel-footer">
-        <span>3 de 86 usuarios · Todos los perfiles</span>
-        <a href="#" class="link-action">Gestionar usuarios →</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- Revisión de contenido -->
-  <section class="panel review-panel">
-    <div class="panel-header flex-between">
-      <div>
-        <h2>Revisión de contenido <span class="badge warning-badge">8 por revisar</span></h2>
-        <span class="subtitle">Corrige etiquetas, solicita claridad y retira contenido que no corresponde.</span>
-      </div>
-      <button class="btn-outline dropdown-btn">Todos los motivos <i class="icon-chevron-down"></i></button>
-      <a href="#" class="link-action view-queue">Ver cola →</a>
-    </div>
-    
-    <table class="review-table">
-      <thead>
-        <tr>
-          <th>ORIGEN</th>
-          <th>CONTENIDO DETECTADO</th>
-          <th>REVISIÓN / PROPUESTA</th>
-          <th>ACCIÓN</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let rev of revisiones">
-          <td>
-            <strong class="text-teal">{{ rev.id }}</strong>
-            <span class="d-block text-muted">{{ rev.tipo }}</span>
-          </td>
-          <td>
-            <strong>{{ rev.detectado }}</strong>
-            <span class="d-block text-muted">{{ rev.contexto }}</span>
-          </td>
-          <td class="proposal-cell">
-            <span class="tag-revision" [ngClass]="{'tag-warning': rev.tagRevision === 'Falta contexto', 'tag-danger': rev.tagRevision === 'No corresponde'}">{{ rev.tagRevision }}</span>
-            <div class="proposal-input" *ngIf="rev.propuesta === 'encendido'; else textPropuesta">
-              <input type="text" [value]="rev.propuesta"> <i class="icon-edit"></i>
-            </div>
-            <ng-template #textPropuesta>
-              <p class="text-muted mt-1">{{ rev.propuesta }}</p>
-            </ng-template>
-          </td>
-          <td>
-            <button [class]="rev.btnClass">{{ rev.accionBtn }}</button>
-          </td>
-        </tr>
+        }
       </tbody>
     </table>
-    <div class="panel-footer audit-footer">
-      <i class="icon-history"></i> Los cambios conservan el texto original, notifican al reportante y quedan en el historial de auditoría. <a href="#" class="link-action">Ver historial →</a>
+    <div class="pie-tabla">
+      <span>3 de 86 usuarios · Todos los perfiles</span>
+      <a class="enlace" routerLink="/usuarios">Gestionar usuarios <app-icon name="arrow-right" [size]="14" /></a>
     </div>
   </section>
 </div>
+
+<section class="card tabla revision">
+  <div class="cab fila-cab">
+    <div>
+      <h2>Revisión de contenido <span class="pill aviso-pill">{{ porRevisar() }} por revisar</span></h2>
+      <p class="sub">Corrige etiquetas, solicita claridad y retira contenido que no corresponde.</p>
+    </div>
+    <div class="acciones-cab">
+      <label class="sel caja">
+        <select #mot aria-label="Filtrar por motivo" (change)="motivo.set(mot.value)">
+          <option value="">Todos los motivos</option>
+          @for (m of motivos; track m) { <option [value]="m">{{ m }}</option> }
+        </select>
+        <app-icon name="chevron-down" [size]="14" />
+      </label>
+      <a class="enlace" routerLink="/moderacion">Ver cola <app-icon name="arrow-right" [size]="14" /></a>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Origen</th><th>Contenido detectado</th><th>Revisión / propuesta</th><th>Acción</th></tr></thead>
+    <tbody>
+      @for (r of visibles(); track r.id) {
+        <tr [class.edicion]="r.editable">
+          <td><a class="folio" [routerLink]="['/mis-reportes', r.id]">{{ r.id }}</a><small>{{ r.tipo }}</small></td>
+          <td><strong>{{ r.detectado }}</strong><small>{{ r.contexto }}</small></td>
+          <td>
+            @if (r.editable) {
+              <small>{{ r.motivo }} · Sustituir por:</small>
+              <label class="editar">
+                <input type="text" [value]="r.propuesta" aria-label="Etiqueta sugerida" (input)="r.propuesta = $any($event.target).value" />
+                <app-icon name="pencil" [size]="16" />
+              </label>
+            } @else {
+              <span class="tag" [class.peligro]="r.motivo === 'No corresponde'">{{ r.motivo }}</span>
+              <small class="prop">{{ r.propuesta }}</small>
+            }
+          </td>
+          <td>
+            <button type="button" [class]="r.primaria ? 'btn-primary' : 'btn-sec'" (click)="resolver(r)">
+              @if (r.icono) { <app-icon [name]="r.icono" [size]="18" /> }
+              {{ r.accion }}
+            </button>
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="4" class="vacio">No hay contenido por revisar con ese motivo.</td></tr>
+      }
+    </tbody>
+  </table>
+
+  <div class="pie-tabla auditoria">
+    @if (aviso()) {
+      <span class="ok" role="status"><app-icon name="check-circle" [size]="16" /> {{ aviso() }}</span>
+    } @else {
+      <span><app-icon name="history" [size]="16" /> Los cambios conservan el texto original, notifican al reportante y quedan en el historial de auditoría.
+        <a class="enlace" routerLink="/moderacion">Ver historial <app-icon name="arrow-right" [size]="14" /></a></span>
+    }
+  </div>
+</section>

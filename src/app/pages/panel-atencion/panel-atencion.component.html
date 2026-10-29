@@ -98,7 +98,7 @@
     </div>
 
     @for (t of visibles(); track t.folio) {
-      <button type="button" class="grid fila" [class.sel]="t.folio === ticket()?.folio" [attr.aria-current]="t.folio === ticket()?.folio ? 'true' : null" (click)="seleccionar(t.folio)">
+      <button type="button" class="grid fila" [class.sel]="t.folio === ticket().folio" [attr.aria-current]="t.folio === ticket().folio ? 'true' : null" (click)="seleccionar(t.folio)">
         <span class="celda-titulo">
           <strong>{{ t.titulo }}</strong>
           @if (t.resumen) { <span class="resumen">{{ t.resumen }}</span> }

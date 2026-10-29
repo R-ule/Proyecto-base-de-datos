@@ -20,13 +20,14 @@
       }
     </nav>
 
-    @if (sesion.esEncargado()) {
+    @if (gestion().length) {
       <p class="nav-label gestion">Gestión</p>
       <nav class="nav" aria-label="Gestión">
-        @for (item of gestion; track item.ruta) {
+        @for (item of gestion(); track item.ruta) {
           <a class="nav-item" [routerLink]="item.ruta" routerLinkActive="active" (click)="menuAbierto.set(false)">
             <app-icon [name]="item.icono" />
             {{ item.texto }}
+            @if (item.badge) { <span class="contador">{{ item.badge }}</span> }
           </a>
         }
       </nav>

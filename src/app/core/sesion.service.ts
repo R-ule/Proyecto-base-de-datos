@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-export type Rol = 'reportante' | 'encargado';
+export type Rol = 'reportante' | 'encargado' | 'administrador';
 
 export interface Usuario {
   nombre: string;
@@ -22,6 +22,16 @@ const USUARIOS: Record<Rol, Usuario> = {
     nombre: 'Luis Herrera', primerNombre: 'Luis', iniciales: 'LH',
     area: 'Soporte técnico', rol: 'Encargado', perfil: 'Consulta y atención de fallas',
   },
+  administrador: {
+    nombre: 'Sofía Ramírez', primerNombre: 'Sofía', iniciales: 'SR',
+    area: 'Administración central', rol: 'Administrador', perfil: 'Acceso completo al sistema',
+  },
+};
+
+const INICIO: Record<Rol, string> = {
+  reportante: '/inicio',
+  encargado: '/panel-atencion',
+  administrador: '/administracion',
 };
 
 /** Sesión simulada. Se reemplaza por la autenticación real (JWT) cuando exista la API. */
@@ -29,16 +39,21 @@ const USUARIOS: Record<Rol, Usuario> = {
 export class SesionService {
   readonly rol = signal<Rol>('reportante');
   readonly actual = computed(() => USUARIOS[this.rol()]);
-  readonly esEncargado = computed(() => this.rol() === 'encargado');
   readonly perfiles = (Object.keys(USUARIOS) as Rol[]).map((r) => ({ id: r, ...USUARIOS[r] }));
 
   get usuario(): Usuario {
     return this.actual();
   }
 
-  /** Demo: los correos que empiezan con luis / encargado / soporte / tecnico entran como Encargado. */
+  /**
+   * Demo: el perfil depende del correo.
+   * sofia… / admin… → Administrador · luis… / encargado… / soporte… → Encargado · cualquier otro → Reportante.
+   */
   iniciarSesion(correo: string): Rol {
-    const rol: Rol = /^(luis|encargad|soporte|tecnic)/i.test(correo.trim()) ? 'encargado' : 'reportante';
+    const c = correo.trim();
+    const rol: Rol = /^(sofia|sofía|admin)/i.test(c)
+      ? 'administrador'
+      : /^(luis|encargad|soporte|tecnic)/i.test(c) ? 'encargado' : 'reportante';
     this.rol.set(rol);
     return rol;
   }
@@ -48,6 +63,6 @@ export class SesionService {
   }
 
   rutaInicial(rol: Rol = this.rol()): string {
-    return rol === 'encargado' ? '/panel-atencion' : '/inicio';
+    return INICIO[rol];
   }
 }
