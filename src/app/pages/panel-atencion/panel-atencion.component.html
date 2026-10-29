@@ -1,0 +1,206 @@
+<header class="hero">
+  <div>
+    <p class="eyebrow">Operación / {{ yo.area }}</p>
+    <h1>Tu panel de atención</h1>
+    <p class="lead">{{ yo.primerNombre }}, aquí están los pendientes de tu equipo. Empieza por los de mayor prioridad.</p>
+  </div>
+  <button type="button" class="btn-sec" [disabled]="actualizando()" (click)="actualizar()">
+    <app-icon name="refresh" [size]="18" [class.gira]="actualizando()" />
+    Actualizar bandeja
+  </button>
+</header>
+
+<!-- Resumen -->
+<section class="stats" aria-label="Resumen del equipo">
+  <article class="stat">
+    <div class="stat-top"><span>Pendientes del equipo</span><app-icon name="inbox" /></div>
+    <strong>{{ resumen().pendientes }}</strong>
+    <p>{{ resumen().sinAsignar }} sin asignar</p>
+  </article>
+  <article class="stat">
+    <div class="stat-top"><span>Prioridad alta</span><app-icon name="flag" /></div>
+    <strong>{{ resumen().alta }}</strong>
+    <p>Requieren atención hoy</p>
+  </article>
+  <article class="stat">
+    <div class="stat-top"><span>En atención</span><app-icon name="wrench" /></div>
+    <strong>{{ resumen().enAtencion }}</strong>
+    <p>Asignados a ti</p>
+  </article>
+  <article class="stat">
+    <div class="stat-top"><span>Resueltos esta semana</span><app-icon name="check-circle" /></div>
+    <strong>{{ resumen().semana }}</strong>
+    <p>
+      @if (resumen().diferencia > 0) { {{ resumen().diferencia }} más que la semana pasada }
+      @else if (resumen().diferencia < 0) { {{ -resumen().diferencia }} menos que la semana pasada }
+      @else { Igual que la semana pasada }
+    </p>
+  </article>
+</section>
+
+@if (urgentes().length) {
+  <div class="alerta" role="status">
+    <app-icon name="clock" [size]="18" />
+    <p>
+      Hay {{ urgentes().length }} {{ urgentes().length === 1 ? 'ticket' : 'tickets' }} de prioridad alta con atención
+      prevista para hoy. Revisa su avance antes de las {{ horaLimite() }}.
+    </p>
+    <button type="button" (click)="verPrioritarios()">Ver prioritarios <app-icon name="arrow-right" [size]="14" /></button>
+  </div>
+}
+
+<div class="layout">
+  <!-- Bandeja -->
+  <section class="card lista" aria-label="Bandeja de tickets">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" [attr.aria-selected]="pestana() === 'pendientes'" [class.on]="pestana() === 'pendientes'" (click)="cambiarPestana('pendientes')">
+        Pendientes <span class="pill">{{ pendientes().length }}</span>
+      </button>
+      <button type="button" role="tab" [attr.aria-selected]="pestana() === 'mios'" [class.on]="pestana() === 'mios'" (click)="cambiarPestana('mios')">
+        Mis tickets · {{ mios().length }}
+      </button>
+      <button type="button" role="tab" [attr.aria-selected]="pestana() === 'resueltos'" [class.on]="pestana() === 'resueltos'" (click)="cambiarPestana('resueltos')">
+        Resueltos
+      </button>
+    </div>
+
+    <div class="filtros">
+      <label class="campo campo-busqueda">
+        <app-icon name="search" [size]="16" />
+        <input #q type="search" placeholder="Buscar ticket..." aria-label="Buscar ticket" [value]="busqueda()" (input)="buscar(q.value)" />
+      </label>
+
+      <label class="campo campo-select">
+        <app-icon name="chevron-down" [size]="16" />
+        <select #pri aria-label="Filtrar por prioridad" (change)="filtrarPrioridad(pri.value)">
+          <option value="" [selected]="!prioridad()">Prioridad</option>
+          @for (p of prioridades; track p) { <option [value]="p" [selected]="prioridad() === p">{{ p }}</option> }
+        </select>
+      </label>
+
+      <label class="campo campo-select">
+        <app-icon name="chevron-down" [size]="16" />
+        <select #res aria-label="Filtrar por responsable" (change)="filtrarResponsable(res.value)">
+          <option value="" [selected]="!responsable()">Responsable</option>
+          <option value="yo" [selected]="responsable() === 'yo'">Yo · {{ yo.nombre }}</option>
+          <option value="sin" [selected]="responsable() === 'sin'">Sin asignar</option>
+          @for (n of responsables(); track n) { <option [value]="n" [selected]="responsable() === n">{{ n }}</option> }
+        </select>
+      </label>
+
+      <button type="button" class="icon-btn" aria-label="Limpiar filtros" title="Limpiar filtros" [disabled]="!hayFiltros()" (click)="limpiarFiltros()">
+        <app-icon name="sliders" [size]="18" />
+      </button>
+    </div>
+
+    <div class="grid cabecera" aria-hidden="true">
+      <span>Ticket / Descripción</span><span>Prioridad</span><span>Estado</span><span>Atender</span>
+    </div>
+
+    @for (t of visibles(); track t.folio) {
+      <button type="button" class="grid fila" [class.sel]="t.folio === ticket()?.folio" [attr.aria-current]="t.folio === ticket()?.folio ? 'true' : null" (click)="seleccionar(t.folio)">
+        <span class="celda-titulo">
+          <strong>{{ t.titulo }}</strong>
+          @if (t.resumen) { <span class="resumen">{{ t.resumen }}</span> }
+          <small>{{ t.folio }} · {{ t.edificio }} · {{ t.area }}</small>
+        </span>
+        <span><span [class]="'badge ' + clasePrioridad[t.prioridad ?? 'Media']">{{ t.prioridad ?? 'Media' }}</span></span>
+        <span><span [class]="'badge ' + claseEstado[t.estado]">{{ t.estado }}</span></span>
+        <span class="atender">
+          @if (t.atender) {
+            @let a = atencion(t.atender);
+            <span [class.hoy]="esHoy(t.atender)" [class.vencida]="vencida(t)">
+              <b>{{ a.dia }}</b>
+              <small>{{ a.hora }}</small>
+            </span>
+          } @else {
+            <span class="nada">—</span>
+          }
+        </span>
+      </button>
+    } @empty {
+      <p class="sin-resultados">No hay tickets con esos filtros. Prueba quitando alguno.</p>
+    }
+
+    <footer class="paginacion">
+      <span>{{ visibles().length }} de {{ filtradas().length }} {{ etiquetaLista() }}</span>
+      <nav aria-label="Paginación">
+        <span>{{ paginaActual() }} de {{ totalPaginas() }}</span>
+        <button type="button" class="pg" aria-label="Página anterior" [disabled]="paginaActual() === 1" (click)="irA(paginaActual() - 1)"><app-icon name="chevron-left" [size]="16" /></button>
+        <button type="button" class="pg" aria-label="Página siguiente" [disabled]="paginaActual() === totalPaginas()" (click)="irA(paginaActual() + 1)"><app-icon name="chevron-right" [size]="16" /></button>
+      </nav>
+    </footer>
+  </section>
+
+  <!-- Detalle del ticket seleccionado -->
+  <aside class="card detalle" aria-label="Detalle del ticket">
+    @if (ticket(); as t) {
+      <div class="det-top">
+        <span class="folio">{{ t.folio }}</span>
+        <a [routerLink]="['/mis-reportes', t.folio]">Abrir detalle <app-icon name="arrow-right" [size]="14" /></a>
+      </div>
+      <h2>{{ t.titulo }}</h2>
+      <div class="badges">
+        <span [class]="'badge ' + claseEstado[t.estado]">{{ t.estado }}</span>
+        <span [class]="'badge ' + clasePrioridad[t.prioridad ?? 'Media']">Prioridad {{ (t.prioridad ?? 'Media').toLowerCase() }}</span>
+      </div>
+
+      @if (detalle(); as d) {
+        <hr />
+        <p class="etq">Descripción del reportante</p>
+        <p class="desc">{{ d.descripcion }}</p>
+        <small class="autor">{{ d.reportante }} · {{ hora(d.creada) }}</small>
+        <hr />
+        <p class="dato"><app-icon name="map-pin" [size]="16" /> {{ d.edificio }} · {{ d.area }}</p>
+        @if (d.evidencia; as ev) {
+          <a class="dato enlace" [routerLink]="['/mis-reportes', t.folio]">
+            <app-icon name="paperclip" [size]="16" />
+            1 {{ ev.tipo === 'PDF' ? 'archivo adjunto' : 'fotografía adjunta' }}
+          </a>
+        }
+        <hr />
+      }
+
+      <div class="fila-resp">
+        <span>Responsable</span>
+        <strong>{{ responsableTexto(t) }}</strong>
+      </div>
+      @if (!t.asignadoA) { <p class="nota">Se te asignará al cambiar el estado del ticket.</p> }
+
+      <form [formGroup]="form" (submit)="$event.preventDefault(); guardar()">
+        <label class="select-estado">
+          <select formControlName="estado" aria-label="Estado del ticket">
+            @for (e of estados; track e) { <option [value]="e">{{ e }}</option> }
+          </select>
+          <app-icon name="chevron-down" [size]="16" />
+        </label>
+
+        <label class="etq-fuerte" for="avance">Añadir avance</label>
+        <textarea id="avance" formControlName="avance" rows="4" maxlength="500" placeholder="Describe el diagnóstico o la acción realizada..." (input)="error.set('')"></textarea>
+        @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+
+        <div class="acciones">
+          <input #archivo type="file" hidden multiple accept="image/jpeg,image/png,application/pdf" (change)="adjuntar(archivo.files)" />
+          <button type="button" class="icon-btn clip" aria-label="Adjuntar archivos" (click)="archivo.click()"><app-icon name="paperclip" [size]="18" /></button>
+          @if (adjuntos().length) { <small class="adj">{{ adjuntos().length }} {{ adjuntos().length === 1 ? 'archivo' : 'archivos' }}</small> }
+          <button type="submit" class="btn-primary" [disabled]="!puedeGuardar">
+            <app-icon name="check" [size]="18" />
+            Guardar avance
+          </button>
+        </div>
+      </form>
+      <p class="nota">El avance será visible para el reportante y quienes siguen el ticket.</p>
+    } @else {
+      <p class="sin-seleccion">Selecciona un ticket para ver su detalle y registrar un avance.</p>
+    }
+  </aside>
+</div>
+
+<footer class="pie">
+  @if (aviso()) {
+    <span class="aviso" role="status"><app-icon name="check-circle" [size]="14" /> {{ aviso() }}</span>
+  } @else {
+    <span><i class="punto"></i> Actualizado hoy a las {{ horaActualizado() }}</span>
+  }
+  <span>Ordenado por prioridad y fecha de atención</span>
+</footer>

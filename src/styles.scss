@@ -1,0 +1,35 @@
+:root {
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-text: #1c2b36;
+  --color-muted: #66727f;
+  --color-border: #e3e7eb;
+  --color-primary: #137d6e;
+  --color-primary-hover: #0f6659;
+  --color-danger: #b42318;
+  --brand: #0e5a6a;
+  --brand-hover: #0a4856;
+  --brand-soft: #e2f0f2;
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

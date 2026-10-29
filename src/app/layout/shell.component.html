@@ -1,0 +1,104 @@
+<div class="shell">
+  <aside class="sidebar" id="menu" [class.open]="menuAbierto()">
+    <a class="brand" [routerLink]="sesion.rutaInicial()" aria-label="nexo, ir al inicio">
+      <span class="brand-mark"><app-icon name="nexo" [size]="20" /></span>
+      <span class="brand-name">nexo</span>
+    </a>
+
+    <div class="service">
+      <strong>Centro de servicios</strong>
+      <span>Gestión de incidencias</span>
+    </div>
+
+    <p class="nav-label">Espacio de trabajo</p>
+    <nav class="nav" aria-label="Principal">
+      @for (item of menu; track item.ruta) {
+        <a class="nav-item" [routerLink]="item.ruta" routerLinkActive="active" (click)="menuAbierto.set(false)">
+          <app-icon [name]="item.icono" />
+          {{ item.texto }}
+        </a>
+      }
+    </nav>
+
+    @if (sesion.esEncargado()) {
+      <p class="nav-label gestion">Gestión</p>
+      <nav class="nav" aria-label="Gestión">
+        @for (item of gestion; track item.ruta) {
+          <a class="nav-item" [routerLink]="item.ruta" routerLinkActive="active" (click)="menuAbierto.set(false)">
+            <app-icon [name]="item.icono" />
+            {{ item.texto }}
+          </a>
+        }
+      </nav>
+    }
+
+    <div class="spacer"></div>
+
+    <div class="perfil">
+      <span class="perfil-label">Perfil activo</span>
+      <strong>{{ usuario().rol }}</strong>
+      <span>{{ usuario().perfil }}</span>
+    </div>
+
+    <a class="nav-item" routerLink="/ayuda" routerLinkActive="active" (click)="menuAbierto.set(false)">
+      <app-icon name="help" />
+      Ayuda y soporte
+    </a>
+
+    <div class="user-wrap">
+      @if (menuPerfil()) {
+        <div class="perfil-menu" role="menu" aria-label="Cambiar de perfil">
+          <p>Cambiar de perfil (demostración)</p>
+          @for (p of sesion.perfiles; track p.id) {
+            <button type="button" role="menuitemradio" [attr.aria-checked]="p.id === sesion.rol()" [class.on]="p.id === sesion.rol()" (click)="elegirPerfil(p.id)">
+              <span class="avatar" aria-hidden="true">{{ p.iniciales }}</span>
+              <span class="user-info"><strong>{{ p.rol }}</strong><span>{{ p.nombre }}</span></span>
+              @if (p.id === sesion.rol()) { <app-icon name="check" [size]="16" /> }
+            </button>
+          }
+        </div>
+      }
+      <button type="button" class="user" aria-haspopup="menu" [attr.aria-expanded]="menuPerfil()" (click)="menuPerfil.set(!menuPerfil())">
+        <span class="avatar" aria-hidden="true">{{ usuario().iniciales }}</span>
+        <span class="user-info">
+          <strong>{{ usuario().nombre }}</strong>
+          <span>{{ usuario().area }}</span>
+        </span>
+        <app-icon name="chevrons-updown" [size]="16" />
+      </button>
+    </div>
+  </aside>
+
+  @if (menuAbierto()) {
+    <div class="scrim" (click)="menuAbierto.set(false)"></div>
+  }
+
+  <div class="main">
+    <header class="topbar">
+      <button type="button" class="icon-btn menu-btn" aria-label="Abrir menú" aria-controls="menu" (click)="menuAbierto.set(true)">
+        <app-icon name="menu" />
+      </button>
+
+      <nav class="crumbs" aria-label="Ruta">
+        <span class="crumb-root">Centro de servicios</span>
+        <span class="sep">/</span>
+        <strong>{{ seccion() }}</strong>
+      </nav>
+
+      <div class="top-actions">
+        <label class="search">
+          <app-icon name="search" [size]="16" />
+          <input #buscador type="search" placeholder="Buscar reporte o folio…" aria-label="Buscar reporte o folio" />
+          <kbd>⌘K</kbd>
+        </label>
+        <button type="button" class="icon-btn" aria-label="Notificaciones"><app-icon name="bell" /></button>
+        <span class="vline"></span>
+        <span class="rol">{{ usuario().rol }}</span>
+      </div>
+    </header>
+
+    <main class="page">
+      <router-outlet />
+    </main>
+  </div>
+</div>

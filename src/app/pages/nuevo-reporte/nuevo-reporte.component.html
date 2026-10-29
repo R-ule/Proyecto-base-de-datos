@@ -1,0 +1,230 @@
+@if (folio(); as f) {
+  <section class="card exito" aria-live="polite">
+    <span class="exito-icono"><app-icon name="check-circle" [size]="32" /></span>
+    <h1>Reporte enviado</h1>
+    <p>Tu folio es <strong>{{ f }}</strong>. Te avisaremos cuando el equipo empiece a atenderlo.</p>
+    <div class="acciones">
+      <a class="btn-sec" [routerLink]="['/mis-reportes', f]">Ver reporte</a>
+      <a class="btn-sec" routerLink="/inicio">Ir al inicio</a>
+      <button type="button" class="btn-primary" (click)="otroReporte()">Levantar otro reporte</button>
+    </div>
+  </section>
+} @else {
+  <header class="hero">
+    <div>
+      <p class="eyebrow"><a routerLink="/mis-reportes">Mis reportes</a> / Nuevo reporte</p>
+      <h1>Cuéntanos qué está fallando</h1>
+      <p class="lead">Comparte los detalles para que el equipo adecuado pueda atenderlo.</p>
+    </div>
+    <div class="hero-acciones">
+      @if (mensajeBorrador()) { <span class="aviso-borrador" role="status">{{ mensajeBorrador() }}</span> }
+      <button type="button" class="btn-sec" (click)="guardarBorrador()">
+        <app-icon name="save" [size]="18" />
+        Guardar borrador
+      </button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <form class="card" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
+      <div class="card-body">
+        <div class="card-top">
+          <h2>Información del reporte</h2>
+          <span class="obligatorios">* Campos obligatorios</span>
+        </div>
+
+        <!-- Categoría -->
+        <fieldset class="field">
+          <legend>Categoría *</legend>
+          <div class="categorias">
+            @for (cat of categorias; track cat.id) {
+              <label class="cat" [class.on]="c.categoria.value === cat.id">
+                <input type="radio" formControlName="categoria" [value]="cat.id" />
+                <app-icon [name]="cat.icono" />
+                {{ cat.nombre }}
+                @if (c.categoria.value === cat.id) { <app-icon class="cat-check" name="check-circle" [size]="18" /> }
+              </label>
+            }
+          </div>
+          @if (c.categoria.touched && c.categoria.invalid) {
+            <p class="error" role="alert">Elige la categoría que mejor describe la falla.</p>
+          }
+        </fieldset>
+
+        <!-- Sede y área -->
+        <div class="dos-col">
+          <div class="field">
+            <label for="sede">Sede o edificio *</label>
+            <div class="control">
+              <select id="sede" formControlName="sede" [class.invalid]="c.sede.touched && c.sede.invalid">
+                <option value="" disabled>Selecciona una sede</option>
+                @for (s of sedes; track s) { <option [value]="s">{{ s }}</option> }
+              </select>
+              <app-icon class="control-icono" name="chevron-down" [size]="18" />
+            </div>
+            @if (c.sede.touched && c.sede.invalid) { <p class="error" role="alert">Selecciona la sede o edificio.</p> }
+          </div>
+
+          <div class="field">
+            <label for="area">Área o referencia *</label>
+            <div class="control">
+              <input id="area" type="text" formControlName="area" placeholder="Ej. Módulo 4 · Recepción" [class.invalid]="c.area.touched && c.area.invalid" />
+              <app-icon class="control-icono" name="map-pin" [size]="18" />
+            </div>
+            @if (c.area.touched && c.area.invalid) { <p class="error" role="alert">Indica el área o una referencia fácil de encontrar.</p> }
+          </div>
+        </div>
+
+        <!-- Título -->
+        <div class="field">
+          <label for="titulo">Título del reporte *</label>
+          <input id="titulo" class="solo" type="text" formControlName="titulo" maxlength="100" [class.invalid]="c.titulo.touched && c.titulo.invalid" />
+          @if (c.titulo.touched && c.titulo.invalid) {
+            <p class="error" role="alert">Escribe un título de al menos 5 caracteres.</p>
+          } @else {
+            <p class="hint">Describe la falla en pocas palabras.</p>
+          }
+        </div>
+
+        <!-- Descripción -->
+        <div class="field">
+          <label for="descripcion">Descripción de la falla *</label>
+          <div class="area-texto">
+            <textarea id="descripcion" formControlName="descripcion" maxlength="2000" rows="4" [class.invalid]="c.descripcion.touched && c.descripcion.invalid"></textarea>
+            <span class="contador">{{ c.descripcion.value.length }} / 2,000 caracteres</span>
+          </div>
+          @if (c.descripcion.touched && c.descripcion.invalid) {
+            <p class="error" role="alert">Cuéntanos qué pasa, desde cuándo y a quién afecta (mínimo 20 caracteres).</p>
+          }
+        </div>
+
+        <!-- Etiquetas -->
+        <div class="field">
+          <div class="label-fila">
+            <label for="etiqueta">Etiquetas</label>
+            <span class="hint">{{ etiquetas().length }} de {{ maxEtiquetas }}</span>
+          </div>
+          <div class="chips" (click)="etiqueta.focus()">
+            @for (t of etiquetas(); track t) {
+              <span class="chip">
+                {{ t }}
+                <button type="button" [attr.aria-label]="'Quitar etiqueta ' + t" (click)="quitarEtiqueta(t); $event.stopPropagation()">
+                  <app-icon name="x" [size]="12" />
+                </button>
+              </span>
+            }
+            <input
+              #etiqueta
+              id="etiqueta"
+              type="text"
+              placeholder="Añadir etiqueta..."
+              maxlength="24"
+              [disabled]="etiquetas().length >= maxEtiquetas"
+              (keydown)="alTeclearEtiqueta($event, etiqueta)"
+              (blur)="alSalirEtiqueta(etiqueta)"
+            />
+          </div>
+          @if (sugeridas().length) {
+            <p class="hint">
+              Sugeridas:
+              @for (s of sugeridas(); track s; let ultimo = $last) {
+                <button type="button" class="sugerida" (click)="agregarEtiqueta(s)">{{ s }}</button>@if (!ultimo) { · }
+              }
+            </p>
+          }
+        </div>
+
+        <!-- Evidencia -->
+        <section class="evidencia">
+          <div class="label-fila">
+            <h3>Evidencia adjunta</h3>
+            <span class="hint">Opcional</span>
+          </div>
+
+          <input #archivo type="file" hidden multiple accept="image/jpeg,image/png,application/pdf" (change)="agregarArchivos(archivo.files); archivo.value = ''" />
+          <button
+            type="button"
+            class="drop"
+            [class.activo]="arrastrando()"
+            (click)="archivo.click()"
+            (dragover)="alArrastrar($event, true)"
+            (dragleave)="alArrastrar($event, false)"
+            (drop)="alSoltar($event)"
+          >
+            <app-icon name="upload" [size]="28" />
+            <span class="drop-texto">
+              <strong>Selecciona archivos o arrástralos aquí</strong>
+              <small>JPG, PNG o PDF · Máximo 10 MB por archivo · Hasta 5 archivos</small>
+            </span>
+          </button>
+
+          @for (e of erroresArchivo(); track e) { <p class="error" role="alert">{{ e }}</p> }
+
+          @for (a of adjuntos(); track a.id) {
+            <div class="archivo">
+              <span class="miniatura">
+                @if (a.vistaPrevia) { <img [src]="a.vistaPrevia" alt="" /> } @else { <app-icon name="file-text" [size]="22" /> }
+              </span>
+              <div class="archivo-info">
+                <strong>{{ a.nombre }}</strong>
+                <span><app-icon name="check-circle" [size]="14" /> {{ a.peso }} · Archivo cargado</span>
+              </div>
+              <button type="button" class="quitar" [attr.aria-label]="'Quitar ' + a.nombre" (click)="quitarArchivo(a.id)">
+                <app-icon name="trash" [size]="18" />
+              </button>
+            </div>
+          }
+        </section>
+      </div>
+
+      <footer class="card-foot">
+        <span class="hint">Recibirás un folio para dar seguimiento.</span>
+        <div class="acciones">
+          <a class="btn-sec" routerLink="/inicio">Cancelar</a>
+          <button type="submit" class="btn-primary" [disabled]="enviando()">
+            <app-icon name="arrow-right" [size]="18" />
+            {{ enviando() ? 'Enviando…' : 'Enviar reporte' }}
+          </button>
+        </div>
+      </footer>
+    </form>
+
+    <!-- Columna lateral -->
+    <aside class="lateral">
+      <section class="card guia">
+        <h2><app-icon name="file-text" /> Un buen reporte ayuda</h2>
+        <p class="hint">Los detalles claros nos permiten asignar tu reporte sin demoras.</p>
+        <ul>
+          <li><app-icon name="check" [size]="16" /><div><strong>Ubica el problema</strong><span>Indica edificio, piso, módulo o una referencia fácil de encontrar.</span></div></li>
+          <li><app-icon name="check" [size]="16" /><div><strong>Describe lo que observas</strong><span>Explica qué falla, desde cuándo y si afecta a otras personas.</span></div></li>
+          <li><app-icon name="check" [size]="16" /><div><strong>Cuida la información</strong><span>Evita datos personales, rostros o documentos en las fotografías.</span></div></li>
+        </ul>
+      </section>
+
+      <section class="card antes">
+        <h2>Antes de enviar</h2>
+        @if (!c.sede.value) {
+          <p class="hint">Elige una sede para ver si ya hay reportes abiertos en ella.</p>
+        } @else if (similar; as s) {
+          <p class="hint">Hay reportes en esta sede. Si se trata de la misma falla, puedes seguirlos.</p>
+          <div class="similar">
+            <div class="similar-top">
+              <small>{{ s.folio }}</small>
+              <span class="badge">{{ s.estado }}</span>
+            </div>
+            <strong>{{ s.titulo }}</strong>
+            <small>{{ s.edificio }} · {{ s.area }}</small>
+           <a [routerLink]="['/mis-reportes', s.folio]">Consultar reporte <app-icon name="arrow-right" [size]="14" /></a>
+          </div>
+        } @else {
+          <p class="hint">No encontramos reportes abiertos en esta sede.</p>
+        }
+      </section>
+
+      <p class="privacidad">
+        <app-icon name="shield" [size]="16" />
+        Tu nombre será visible para el personal que atienda el reporte. Tus datos de contacto no son públicos.
+      </p>
+    </aside>
+  </div>
+}
