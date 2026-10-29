@@ -196,6 +196,48 @@
   </aside>
 </div>
 
+<div class="tecnico-console card">
+  <div class="card-header">
+    <h3>Gestión Operativa - Ticket NX-1047</h3>
+    <span class="badge status-process">En proceso</span>
+  </div>
+  
+  <div class="card-body">
+    <!-- ETIQUETAS DINÁMICAS (TAGS) -->
+    <div class="form-group tags-manager">
+      <label>Etiquetas dinámicas (Tags)</label>
+      <div class="tags-list">
+        <span class="tag-chip">Mantenimiento <button>×</button></span>
+        <span class="tag-chip urgent">Prioridad Alta <button>×</button></span>
+      </div>
+      <div class="add-tag">
+        <input type="text" placeholder="Añadir etiqueta..." class="form-control input-sm">
+        <button class="btn btn-outline btn-sm">Agregar</button>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- HORAS DE ATENCIÓN -->
+    <div class="form-group hours-manager">
+      <label>Registro de horas de atención</label>
+      <div class="hours-input">
+        <input type="number" value="2.5" step="0.5" class="form-control">
+        <span>horas invertidas</span>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- BITÁCORA -->
+    <div class="form-group log-manager">
+      <label>Actualizar bitácora</label>
+      <textarea rows="3" class="form-control" placeholder="Describe los avances, materiales usados o diagnóstico técnico..."></textarea>
+      <button class="btn btn-primary mt-2">Guardar entrada de bitácora</button>
+    </div>
+  </div>
+</div>
+
 <footer class="pie">
   @if (aviso()) {
     <span class="aviso" role="status"><app-icon name="check-circle" [size]="14" /> {{ aviso() }}</span>

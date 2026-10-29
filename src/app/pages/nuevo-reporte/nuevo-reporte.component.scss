@@ -314,3 +314,37 @@ textarea { display: block; min-height: 104px; padding: 12px 14px 28px; line-heig
   .categorias, .dos-col { grid-template-columns: minmax(0, 1fr); }
   .card-foot, .acciones { flex-direction: column; align-items: stretch; }
 }
+
+/* ---------- Subdocumentos Dinámicos ---------- */
+.form-group {
+  margin-bottom: 20px;
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+}
+
+.detalle-especifico {
+  margin: 0 0 20px;
+  padding: 16px 20px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--brand);
+  border-radius: 8px;
+
+  h4 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--brand);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .form-group:last-child {
+    margin-bottom: 0;
+  }
+}

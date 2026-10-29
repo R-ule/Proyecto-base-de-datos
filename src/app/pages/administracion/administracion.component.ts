@@ -1,5 +1,8 @@
 import { Component, computed, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { BaseChartDirective } from 'ng2-charts';
+import { ChartConfiguration, ChartOptions, ChartType } from 'chart.js';
 import { IconComponent, IconName } from '../../core/icon.component';
 
 type Motivo = 'Etiqueta poco clara' | 'Falta contexto' | 'No corresponde';
@@ -24,11 +27,45 @@ const TOTAL_COLA = 8;
 @Component({
   selector: 'app-administracion',
   standalone: true,
-  imports: [RouterLink, IconComponent],
+  imports: [CommonModule, RouterLink, IconComponent, BaseChartDirective],
   templateUrl: './administracion.component.html',
   styleUrl: './administracion.component.scss',
 })
 export class AdministracionComponent {
+  // Gráfica 1: Promedio de horas por edificio (Barras)
+  public barChartOptions: ChartOptions<'bar'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+  };
+  public barChartType: 'bar' = 'bar';
+  public barChartData: ChartConfiguration<'bar'>['data'] = {
+    labels: ['Edificio A', 'Edificio B', 'Biblioteca', 'Laboratorios', 'Rectoría'],
+    datasets: [
+      { 
+        data: [12, 19, 8, 22, 5], 
+        label: 'Horas Promedio de Atención', 
+        backgroundColor: '#0f766e',
+        borderRadius: 4
+      }
+    ]
+  };
+
+  // Gráfica 2: Top etiquetas más frecuentes (Pastel)
+  public pieChartOptions: ChartOptions<'pie'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'right' }
+    }
+  };
+  public pieChartType: 'pie' = 'pie';
+  public pieChartData: ChartConfiguration<'pie'>['data'] = {
+    labels: ['Mantenimiento', 'Cómputo/Redes', 'Hardware', 'Software', 'Mobiliario'],
+    datasets: [{
+      data: [35, 25, 20, 10, 10],
+      backgroundColor: ['#0f766e', '#14b8a6', '#0ea5e9', '#f59e0b', '#ef4444']
+    }]
+  };
   readonly estadisticas: { titulo: string; valor: string; subtitulo: string; icono: IconName }[] = [
     { titulo: 'Reportes activos', valor: '38', subtitulo: '12 recibidos · 26 en proceso', icono: 'copy' },
     { titulo: 'Prioridad alta', valor: '7', subtitulo: '3 con atención prevista hoy', icono: 'flag' },

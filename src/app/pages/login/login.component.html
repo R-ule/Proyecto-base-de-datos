@@ -21,6 +21,21 @@
         <p>Introduce tu correo electrónico y contraseña.</p>
       </div>
 
+      <!-- Mensaje temporal para la captura del Token -->
+      @if (tokenValidado()) {
+        <div class="jwt-alert" role="alert">
+          <svg class="icon-check" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <div class="jwt-content">
+            <strong>Acceso Autorizado</strong>
+            <p>Token JWT validado exitosamente.</p>
+            <code class="jwt-string">{{ jwtSimulado() }}</code>
+          </div>
+        </div>
+      }
+
       <form class="card-body" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="field">
           <label for="email">Correo electrónico</label>

@@ -202,6 +202,7 @@ app-icon.gira { animation: girar 0.8s linear infinite; }
   &.media { color: #8a5a00; background: #fdf0dc; }
   &.alta { color: #b42318; background: #fde8e6; }
   &.critica { color: #fff; background: #b42318; }
+  &.status-process { color: #8a5a00; background: #fdf0dc; }
 }
 
 .atender {
@@ -324,6 +325,157 @@ textarea {
 .nota { margin: 14px 0 0; font-size: 11px; line-height: 1.5; color: var(--color-muted); }
 .fila-resp + .nota { margin: -4px 0 12px; }
 .sin-seleccion { margin: 0; padding: 24px 0; font-size: 14px; text-align: center; color: var(--color-muted); }
+
+/* ---------- Consola del técnico ---------- */
+.tecnico-console {
+  padding: 20px 24px;
+  margin-bottom: 24px;
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+  }
+
+  .card-body {
+    hr {
+      margin: 16px 0;
+      border: 0;
+      border-top: 1px solid var(--color-border);
+    }
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+  }
+
+  .tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .add-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hours-input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--color-muted);
+
+    input {
+      width: 90px;
+    }
+  }
+
+  .form-control {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+
+    &:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgb(14 90 106 / 0.15);
+    }
+
+    &.input-sm {
+      height: 34px;
+    }
+  }
+
+  textarea.form-control {
+    width: 100%;
+    min-height: 80px;
+    resize: vertical;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .btn-sm {
+    height: 34px;
+    padding: 0 14px;
+  }
+
+  .btn-outline {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+
+    &:hover {
+      background: var(--color-bg);
+    }
+  }
+
+  .mt-2 {
+    margin-top: 8px;
+  }
+}
+
+.tag-chip {
+  background: #e2e8f0;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  margin-right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  &.urgent {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  button {
+    background: none;
+    border: 0;
+    padding: 0;
+    margin-left: 2px;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
 
 /* ---------- Pie ---------- */
 .pie { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--color-muted); }

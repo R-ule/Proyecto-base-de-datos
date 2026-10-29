@@ -1,4 +1,5 @@
 import { Component, DestroyRef, ElementRef, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { formatearPeso } from '../../core/format';
@@ -23,7 +24,7 @@ const ETIQUETAS_SUGERIDAS = ['conectividad', 'impresora', 'mantenimiento'];
 @Component({
   selector: 'app-nuevo-reporte',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, IconComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, IconComponent],
   templateUrl: './nuevo-reporte.component.html',
   styleUrl: './nuevo-reporte.component.scss',
 })
@@ -31,6 +32,14 @@ export class NuevoReporteComponent {
   private readonly fb = inject(FormBuilder);
   private readonly datos = inject(IncidenciasService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  // Controla qué subdocumento se muestra
+  categoriaSeleccionada = signal<string>('');
+
+  cambiarCategoria(event: Event) {
+    const selectElement = event.target as HTMLSelectElement;
+    this.categoriaSeleccionada.set(selectElement.value);
+  }
 
   readonly categorias = CATEGORIAS;
   readonly sedes = SEDES;

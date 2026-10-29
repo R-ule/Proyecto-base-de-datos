@@ -237,3 +237,55 @@ input[type='text'] {
 @media (prefers-reduced-motion: reduce) {
   .btn { transition: none; }
 }
+
+/* ---------- Alerta JWT (Simulación) ---------- */
+.jwt-alert {
+  margin: 16px 20px 0;
+  padding: 12px;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-card);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  color: #166534;
+  animation: fadeIn 0.3s ease-in;
+
+  .icon-check {
+    flex-shrink: 0;
+    color: #22c55e;
+  }
+
+  .jwt-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    strong { 
+      font-size: 13px; 
+      font-weight: 600; 
+    }
+    
+    p { 
+      margin: 0; 
+      font-size: 12px; 
+    }
+
+    .jwt-string {
+      display: block;
+      margin-top: 4px;
+      font-size: 10px;
+      color: #15803d;
+      word-break: break-all;
+      background: #dcfce7;
+      padding: 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

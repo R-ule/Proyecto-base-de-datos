@@ -51,6 +51,53 @@
           }
         </fieldset>
 
+        <div class="form-group">
+          <label>Categoría de la incidencia</label>
+          <select (change)="cambiarCategoria($event)" class="form-control">
+            <option value="">Selecciona una opción...</option>
+            <option value="redes">Cómputo / Redes</option>
+            <option value="infraestructura">Infraestructura</option>
+            <option value="academico">Académico</option>
+          </select>
+        </div>
+
+        <!-- SUBDOCUMENTO DINÁMICO: Cómputo / Redes -->
+        @if (categoriaSeleccionada() === 'redes') {
+          <div class="detalle-especifico">
+            <h4><i class="icon-monitor"></i> Detalles de Cómputo/Redes</h4>
+            <div class="form-group">
+              <label>Dirección IP o MAC (Opcional)</label>
+              <input type="text" placeholder="Ej. 192.168.1.50" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Tipo de conexión afectada</label>
+              <select class="form-control">
+                <option>Inalámbrica (Wi-Fi)</option>
+                <option>Cableada (Ethernet / Nodos)</option>
+              </select>
+            </div>
+          </div>
+        }
+
+        <!-- SUBDOCUMENTO DINÁMICO: Infraestructura -->
+        @if (categoriaSeleccionada() === 'infraestructura') {
+          <div class="detalle-especifico">
+            <h4><i class="icon-tool"></i> Detalles de Infraestructura</h4>
+            <div class="form-group">
+              <label>Ubicación exacta (Edificio y Aula)</label>
+              <input type="text" placeholder="Ej. Edificio D, Planta Baja" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Nivel de riesgo percibido</label>
+              <select class="form-control">
+                <option>Bajo (Estético / Menor)</option>
+                <option>Medio (Afecta operaciones)</option>
+                <option>Alto (Peligro eléctrico/estructural)</option>
+              </select>
+            </div>
+          </div>
+        }
+
         <!-- Sede y área -->
         <div class="dos-col">
           <div class="field">

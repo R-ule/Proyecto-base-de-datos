@@ -14,9 +14,13 @@ export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly router = inject(Router);
   private readonly sesion = inject(SesionService);
-
+  
   readonly showPassword = signal(false);
   readonly loading = signal(false);
+  
+  // Nuevos signals para la captura
+  readonly tokenValidado = signal(false);
+  readonly jwtSimulado = signal('');
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -27,7 +31,7 @@ export class LoginComponent {
   get email() {
     return this.form.controls.email;
   }
-
+  
   get password() {
     return this.form.controls.password;
   }
@@ -41,12 +45,19 @@ export class LoginComponent {
       this.form.markAllAsTouched();
       return;
     }
+    
     this.loading.set(true);
-    // TODO: conectar con la API de autenticación (JWT) cuando exista el backend.
+    
+    // Mostramos la alerta de JWT en pantalla
+    this.tokenValidado.set(true);
+    this.jwtSimulado.set('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxMjMsImVtYWlsIjoibm9tYnJlQGNvcnJlby5jb20iLCJyb2wiOiJBZG1pbmlzdHJhZG9yIn19.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c');
+
     const rol = this.sesion.iniciarSesion(this.email.value);
+    
+    // Retrasamos 4 segundos para permitir tomar la captura
     setTimeout(() => {
       this.loading.set(false);
       this.router.navigateByUrl(this.sesion.rutaInicial(rol));
-    }, 600);
+    }, 4000);
   }
 }
