@@ -29,7 +29,7 @@ export interface Usuario {
   perfil: string;
 }
 
-const API_URL = 'https://proyecto-base-de-datos.onrender.com/api/auth';
+const API_URL = 'http://localhost:3000/api/auth';
 const TOKEN_KEY = 'nexo:token';
 const USUARIO_KEY = 'nexo:usuario';
 

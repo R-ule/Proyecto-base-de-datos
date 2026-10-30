@@ -16,7 +16,7 @@ const normalizar = (t: string) => t.normalize('NFD').replace(/\p{Diacritic}/gu, 
 const pesoPrioridad = (p?: Prioridad) => PRIORIDADES.indexOf(p ?? 'Media');
 const esHoy = (d: Date) => d.toDateString() === new Date().toDateString();
 const horaCorta = (d: Date) => d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-const API_ADMIN = 'https://proyecto-base-de-datos.onrender.com/api/admin';
+const API_ADMIN = 'http://localhost:3000/api/admin';
 
 interface UsuarioAsignable {
   id: string;

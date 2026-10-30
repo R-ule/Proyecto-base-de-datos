@@ -4,8 +4,8 @@ import { firstValueFrom } from 'rxjs';
 import { DetalleIncidencia, Estado, Incidencia, Persona, Prioridad } from './models';
 import { SesionService } from './sesion.service';
 
-const API_URL = 'https://proyecto-base-de-datos.onrender.com/api/incidencias';
-const API_ROOT = 'https://proyecto-base-de-datos.onrender.com/api';
+const API_URL = 'http://localhost:3000/api/incidencias';
+const API_ROOT = 'http://localhost:3000/api';
 
 interface ApiSeguimiento {
   fecha: string;
