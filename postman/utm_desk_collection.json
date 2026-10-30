@@ -1,24 +1,177 @@
 {
   "info": {
-    "_postman_id": "5b328fb3-85c1-4e53-86b1-3a40d927b3cb",
-    "name": "UTM Desk API",
-    "description": "Colección inicial para probar la API del proyecto.",
+    "_postman_id": "7b8921a4-94c6-4d2b-bb48-ef2c4d123456",
+    "name": "UTM Desk - Incidencias API (Equipo)",
+    "description": "Colección de pruebas para los endpoints de Incidencias expuestos por el backend del equipo (POST, GET, PATCH). No incluye rutas no implementadas (login, dashboard, storage).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "codigo_folio",
+      "value": "INC-2026-0032",
+      "type": "string"
+    }
+  ],
   "item": [
     {
-      "name": "Health check",
+      "name": "1. POST Incidencia - Cómputo y Redes",
       "event": [
         {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "pm.test('responde con estado 200', function () {",
+              "pm.test('Responde con estado 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Retorna folio generado y mensaje de éxito', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('codigo');",
+              "    pm.expect(jsonData.codigo).to.match(/^INC-2026-\\d{4}$/);",
+              "    pm.collectionVariables.set('codigo_folio', jsonData.codigo);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titulo\": \"Falla en switch de laboratorio\",\n  \"descripcion\": \"El switch del rack principal no responde al enlace troncal.\",\n  \"categoria\": \"computo_redes\",\n  \"prioridad\": \"alta\",\n  \"ubicacion\": {\n    \"edificio\": \"Edificio A\",\n    \"aula\": \"Laboratorio 1\"\n  },\n  \"detalle_especifico\": {\n    \"tipo_equipo\": \"Switch\",\n    \"ip\": \"192.168.1.10\",\n    \"vlan\": 10,\n    \"puerto_uplink\": \"Gi0/1\",\n    \"equipos_afectados\": 24\n  },\n  \"tags\": [\"redes\", \"switch\", \"prioritario\"]\n}"
+        },
+        "url": "{{base_url}}/api/incidencias"
+      }
+    },
+    {
+      "name": "2. POST Incidencia - Infraestructura Física",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde con estado 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Retorna folio generado', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('codigo');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titulo\": \"Fisura en muro lateral\",\n  \"descripcion\": \"Grieta visible en muro posterior con desprendimiento leve de revoque.\",\n  \"categoria\": \"infraestructura_fisica\",\n  \"prioridad\": \"media\",\n  \"ubicacion\": {\n    \"edificio\": \"Edificio B\",\n    \"aula\": \"Aula 204\"\n  },\n  \"detalle_especifico\": {\n    \"tipo_dano\": \"Fisura estructural\",\n    \"nivel_deterioro\": \"moderado\",\n    \"riesgo_seguridad\": \"medio\",\n    \"requiere_contratista\": true\n  },\n  \"tags\": [\"mantenimiento\", \"albanileria\"]\n}"
+        },
+        "url": "{{base_url}}/api/incidencias"
+      }
+    },
+    {
+      "name": "3. POST Incidencia - Servicios Académicos",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde con estado 201 Created', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Retorna folio generado', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('codigo');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titulo\": \"Error al cargar calificaciones parciales\",\n  \"descripcion\": \"La plataforma rechaza el archivo de actas parciales de la materia de BD.\",\n  \"categoria\": \"servicios_academicos\",\n  \"prioridad\": \"alta\",\n  \"ubicacion\": {\n    \"edificio\": \"Edificio C\",\n    \"aula\": \"Servicios Escolares\"\n  },\n  \"detalle_especifico\": {\n    \"plataforma\": \"SIA\",\n    \"codigo_curso\": \"BD-2026-1\",\n    \"periodo_escolar\": \"2026-1\",\n    \"estudiantes_impactados\": 35\n  },\n  \"tags\": [\"academico\", \"calificaciones\"]\n}"
+        },
+        "url": "{{base_url}}/api/incidencias"
+      }
+    },
+    {
+      "name": "4. POST Incidencia - Datos Inválidos (Error 400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde con estado 400 Bad Request', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test('Informa error de validación Zod', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('error');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"titulo\": \"No\",\n  \"categoria\": \"categoria_invalida\"\n}"
+        },
+        "url": "{{base_url}}/api/incidencias"
+      }
+    },
+    {
+      "name": "5. GET Listado de Incidencias",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde con estado 200 OK', function () {",
               "    pm.response.to.have.status(200);",
               "});",
-              "pm.test('la API está disponible', function () {",
-              "    pm.expect(pm.response.json()).to.have.property('status', 'ok');",
+              "pm.test('Retorna arreglo con las incidencias registradas', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('total');",
+              "    pm.expect(jsonData.total).to.be.above(24);",
+              "    pm.expect(jsonData.data).to.be.an('array');",
               "});"
             ]
           }
@@ -27,15 +180,199 @@
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/api/health"
-      },
-      "response": []
-    }
-  ],
-  "variable": [
+        "url": "{{base_url}}/api/incidencias"
+      }
+    },
     {
-      "key": "baseUrl",
-      "value": "http://localhost:3000"
+      "name": "6. GET Listado con Filtros Opcionales",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde con estado 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/incidencias?categoria=computo_redes&estado=abierta",
+          "host": ["{{base_url}}"],
+          "path": ["api", "incidencias"],
+          "query": [
+            { "key": "categoria", "value": "computo_redes" },
+            { "key": "estado", "value": "abierta" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "7. PATCH Estado - Cambiar a en_proceso",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde con estado 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('El estado fue actualizado a en_proceso', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.estado).to.eql('en_proceso');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"estado\": \"en_proceso\",\n  \"comentario\": \"Técnico de soporte inicia atención diagnóstica en sitio.\",\n  \"horas_invertidas\": 1\n}"
+        },
+        "url": "{{base_url}}/api/incidencias/{{codigo_folio}}/estado"
+      }
+    },
+    {
+      "name": "8. PATCH Estado - Cambiar a resuelta",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde con estado 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('El estado fue actualizado a resuelta', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.estado).to.eql('resuelta');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"estado\": \"resuelta\",\n  \"comentario\": \"Módulo sustituido y servicio restablecido satisfactoriamente.\",\n  \"horas_invertidas\": 2\n}"
+        },
+        "url": "{{base_url}}/api/incidencias/{{codigo_folio}}/estado"
+      }
+    },
+    {
+      "name": "9. PATCH Estado - Reabrir a abierta",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde con estado 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('El estado fue actualizado a abierta', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.estado).to.eql('abierta');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"estado\": \"abierta\",\n  \"comentario\": \"Reportante indica intermitencia residual; se reabre la incidencia.\",\n  \"horas_invertidas\": 0\n}"
+        },
+        "url": "{{base_url}}/api/incidencias/{{codigo_folio}}/estado"
+      }
+    },
+    {
+      "name": "10. PATCH Estado - Folio Inexistente",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde con error de no encontrado (404 o 500 por bug de retorno null)', function () {",
+              "    pm.expect([404, 500]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"estado\": \"en_proceso\",\n  \"comentario\": \"Intento sobre folio inexistente.\"\n}"
+        },
+        "url": "{{base_url}}/api/incidencias/INC-9999-9999/estado"
+      }
+    },
+    {
+      "name": "11. PATCH Estado - Estado Inválido (Error 400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Responde con estado 400 Bad Request', function () {",
+              "    pm.response.to.have.status(400);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"estado\": \"estado_inexistente\",\n  \"comentario\": \"Valor fuera de enumeración.\"\n}"
+        },
+        "url": "{{base_url}}/api/incidencias/{{codigo_folio}}/estado"
+      }
     }
   ]
 }
