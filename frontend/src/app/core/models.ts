@@ -42,6 +42,10 @@ export interface Incidencia {
   prioridad?: Prioridad;
   /** Nombre de la persona encargada. Sin valor = sin asignar. */
   asignadoA?: string;
+  /** Técnico que tomó o recibió el ticket. */
+  tecnicoAsignado?: Persona;
+  /** Supervisor que aceptó o revisó la petición. */
+  responsable?: Persona;
   /** Fecha y hora prevista de atención. */
   atender?: Date;
   /** Resumen de una línea de la falla. */
@@ -53,6 +57,7 @@ export interface Persona {
   nombre: string;
   iniciales: string;
   area: string;
+  correo?: string;
 }
 
 /** Una entrada de la bitácora de seguimiento. */

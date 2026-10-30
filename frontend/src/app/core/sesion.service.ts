@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-export type Rol = 'reportante' | 'encargado' | 'administrador';
+export type Rol = 'reportante' | 'encargado' | 'administrador' | 'auditor';
 type ApiRol = Rol | 'tecnico' | 'superAdmin';
 
 interface ApiUsuario {
@@ -45,11 +45,14 @@ const usuarioDesdeApi = (usuario: ApiUsuario): Usuario => {
     primerNombre,
     iniciales: usuario.nombre.trim().split(/\s+/).slice(0, 2).map((parte) => parte[0] ?? '').join('').toUpperCase(),
     correo: usuario.correo,
-    area: rol === 'encargado' ? 'Soporte técnico' : rol === 'administrador' ? 'Administración' : 'Comunidad universitaria',
-    rol: rol === 'encargado' ? 'Encargado' : rol === 'administrador' ? 'Administrador' : 'Reportante',
+    area: rol === 'encargado' ? 'Soporte técnico'
+      : rol === 'administrador' ? 'Administración'
+        : rol === 'auditor' ? 'Moderación' : 'Comunidad universitaria',
+    rol: rol === 'encargado' ? 'Encargado'
+      : rol === 'administrador' ? 'Administrador' : rol === 'auditor' ? 'Auditor' : 'Reportante',
     perfil: rol === 'encargado' ? 'Consulta y atención de fallas'
       : rol === 'administrador' ? 'Acceso de administración'
-        : 'Crea y sigue tus reportes',
+        : rol === 'auditor' ? 'Crea reportes y revisa contenido' : 'Crea y sigue tus reportes',
   };
 };
 
@@ -104,6 +107,24 @@ export class SesionService {
     }
   }
 
+  async registrarse(nombre: string, correo: string, password: string): Promise<Rol> {
+    this.error.set('');
+    try {
+      const respuesta = await firstValueFrom(this.http.post<SesionResponse>(`${API_URL}/register`, {
+        nombre: nombre.trim(),
+        correo: correo.trim().toLowerCase(),
+        password,
+      }));
+      if (!respuesta.token) throw new Error('La API no devolvió un token de sesión.');
+      this.guardar(respuesta.token, respuesta.usuario, false);
+      return this.rol();
+    } catch (error) {
+      const mensaje = this.mensajeError(error);
+      this.error.set(mensaje);
+      throw new Error(mensaje);
+    }
+  }
+
   cerrarSesion(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USUARIO_KEY);
@@ -146,7 +167,7 @@ export class SesionService {
           !('rol' in value) || typeof value.rol !== 'string' ||
           !('activo' in value) || typeof value.activo !== 'boolean') return null;
       const role = value.rol as ApiRol;
-      if (!['reportante', 'encargado', 'administrador', 'tecnico', 'superAdmin'].includes(role)) return null;
+      if (!['reportante', 'encargado', 'administrador', 'auditor', 'tecnico', 'superAdmin'].includes(role)) return null;
       return { id: value.id, nombre: value.nombre, correo: value.correo, rol: role, activo: value.activo };
     } catch {
       return null;

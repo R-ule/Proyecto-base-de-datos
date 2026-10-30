@@ -257,7 +257,31 @@ const VALIDATOR = {
           'Campo del índice TTL (60 días). Se gestiona con $set / $unset atómico junto con "estado".',
       },
 
-      // CAMPO OPCIONAL — técnico asignado
+      // CAMPO OPCIONAL — supervisor que aceptó o revisó la petición.
+      responsable_atencion: {
+        bsonType: 'object',
+        required: ['nombre', 'correo'],
+        additionalProperties: false,
+        properties: {
+          nombre: txt,
+          correo: txt,
+        },
+        description: 'Supervisor responsable. Solo perfiles administrador/superAdmin.',
+      },
+
+      // CAMPO OPCIONAL — técnico que tomó o recibió la tarea.
+      tecnico_asignado: {
+        bsonType: 'object',
+        required: ['nombre', 'correo'],
+        additionalProperties: false,
+        properties: {
+          nombre: txt,
+          correo: txt,
+        },
+        description: 'Técnico asignado a la reparación.',
+      },
+
+      // CAMPO LEGACY — se conserva para compatibilidad con incidencias previas.
       asignado_a: {
         bsonType: 'object',
         additionalProperties: false,
@@ -265,7 +289,7 @@ const VALIDATOR = {
           nombre: txt,
           correo: txt,
         },
-        description: 'Técnico responsable. Opcional.',
+        description: 'Asignación previa, conservada para compatibilidad.',
       },
     },
 

@@ -10,6 +10,9 @@
   </button>
 </header>
 
+@if (errorAsignacion()) { <p class="error" role="alert">{{ errorAsignacion() }}</p> }
+@if (avisoAsignacion()) { <p class="aviso" role="status">{{ avisoAsignacion() }}</p> }
+
 <!-- Resumen -->
 <section class="stats" aria-label="Resumen del equipo">
   <article class="stat">
@@ -80,8 +83,8 @@
 
       <label class="campo campo-select">
         <app-icon name="chevron-down" [size]="16" />
-        <select #res aria-label="Filtrar por responsable" (change)="filtrarResponsable(res.value)">
-          <option value="" [selected]="!responsable()">Responsable</option>
+        <select #res aria-label="Filtrar por técnico asignado" (change)="filtrarResponsable(res.value)">
+          <option value="" [selected]="!responsable()">Técnico asignado</option>
           <option value="yo" [selected]="responsable() === 'yo'">Yo · {{ yo.nombre }}</option>
           <option value="sin" [selected]="responsable() === 'sin'">Sin asignar</option>
           @for (n of responsables(); track n) { <option [value]="n" [selected]="responsable() === n">{{ n }}</option> }
@@ -163,9 +166,42 @@
 
       <div class="fila-resp">
         <span>Responsable</span>
-        <strong>{{ responsableTexto(t) }}</strong>
+        @if (esSupervisor) {
+          <label class="asignacion-select">
+            <select [attr.aria-label]="'Responsable del reporte ' + t.folio" [value]="idResponsable(t)" (change)="cambiarResponsable(t.folio, responsable.value)" #responsable>
+              <option value="" disabled>Selecciona supervisor</option>
+              @for (usuario of supervisores(); track usuario.id) {
+                <option [value]="usuario.id">{{ usuario.nombre }}</option>
+              }
+            </select>
+            <app-icon name="chevron-down" [size]="14" />
+          </label>
+        } @else {
+          <strong>{{ responsableTexto(t) }}</strong>
+        }
       </div>
-      @if (!t.asignadoA) { <p class="nota">Se te asignará al cambiar el estado del ticket.</p> }
+      <div class="fila-resp">
+        <span>Técnico asignado</span>
+        @if (esSupervisor) {
+          <label class="asignacion-select">
+            <select [attr.aria-label]="'Técnico asignado al reporte ' + t.folio" [value]="idTecnico(t)" (change)="cambiarTecnico(t.folio, tecnico.value)" #tecnico>
+              <option value="" disabled>Selecciona técnico</option>
+              @for (usuario of tecnicos(); track usuario.id) {
+                <option [value]="usuario.id">{{ usuario.nombre }}</option>
+              }
+            </select>
+            <app-icon name="chevron-down" [size]="14" />
+          </label>
+        } @else {
+          <strong>{{ t.tecnicoAsignado?.nombre ?? 'Sin asignar' }}</strong>
+        }
+      </div>
+      @if (esTecnico && !t.tecnicoAsignado) {
+        <button type="button" class="btn-sec tomar" [disabled]="asignando()" (click)="tomarTicket(t)">
+          <app-icon name="wrench" [size]="16" />
+          {{ asignando() ? 'Tomando…' : 'Tomar esta tarea' }}
+        </button>
+      }
 
       <form [formGroup]="form" (submit)="$event.preventDefault(); guardar()">
         <label class="select-estado">

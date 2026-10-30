@@ -279,6 +279,29 @@ app-icon.gira { animation: girar 0.8s linear infinite; }
 
 .fila-resp { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; font-size: 12px; color: var(--color-muted); strong { font-size: 13px; color: var(--color-text); } }
 
+.asignacion-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 62%;
+  select {
+    width: 100%;
+    min-width: 145px;
+    height: 34px;
+    padding: 0 28px 0 10px;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 7px;
+    appearance: none;
+    cursor: pointer;
+  }
+  app-icon { position: absolute; right: 8px; color: var(--color-muted); pointer-events: none; }
+}
+
+.tomar { width: 100%; margin: 0 0 14px; }
+.aviso { margin: 8px 0 16px; color: #1e6b34; font-size: 13px; }
+
 .select-estado {
   position: relative;
   display: block;

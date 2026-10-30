@@ -21,10 +21,16 @@ La API escucha en `http://localhost:3000`.
 
 - `GET /health`: estado de MongoDB y disponibilidad de almacenamiento.
 - `POST /api/auth/login`: valida correo y contraseña de una cuenta activa, y devuelve JWT.
+- `POST /api/auth/register`: crea una cuenta de reportante, rechaza correos duplicados y devuelve una sesión JWT. No acepta perfiles privilegiados.
 - `GET /api/auth/me`: perfil actual.
 - Las demás rutas `/api/*` requieren `Authorization: Bearer <token>`.
-- Los cambios de estado requieren perfil técnico o administrador; `/api/admin/*` requiere administrador.
+- Los cambios de estado requieren perfil técnico o administrador. `/api/admin/*` requiere administrador, y `/api/moderacion/*` permite a auditores y administradores consultar las métricas y atender la cola, sin acceso a la gestión de usuarios.
+- Administradores y superadministradores asignan al supervisor responsable y al técnico; el técnico puede tomar una tarea libre para sí mismo. La API valida los perfiles de cada asignación y evita que un administrador quede como técnico.
 - Seguimientos, comentarios, moderación y evidencias se guardan en colecciones/documentos del servidor, no en `localStorage`.
+
+El registro exige contraseña de 6 a 8 caracteres. Para el correo admite únicamente letras, números, puntos y `@`, con un dominio válido. El login no limita el máximo de caracteres para mantener el acceso a cuentas existentes.
+
+Administración puede asignar los perfiles `reportante`, `tecnico`, `administrador` y `auditor`. Auditor conserva las funciones de reportante y añade acceso a Moderación; no puede usar los endpoints administrativos.
 
 ## Comprobaciones
 

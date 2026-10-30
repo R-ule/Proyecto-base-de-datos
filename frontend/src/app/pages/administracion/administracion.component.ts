@@ -3,10 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { RouterLink } from '@angular/router';
-import { BaseChartDirective } from 'ng2-charts';
-import { ChartConfiguration, ChartOptions } from 'chart.js';
 import { IconComponent, IconName } from '../../core/icon.component';
+import { EMAIL_PATTERN } from '../../core/validation';
 
 const API_URL = 'http://localhost:3000/api/admin';
 
@@ -16,11 +14,7 @@ interface AdminSummary {
   cerrados: number;
   prioridadAlta: number;
   resueltosMes: number;
-  pendientesRevision: number;
-  porEstado: { _id: string; total: number }[];
   porCategoria: { _id: string; total: number }[];
-  promedioPorEdificio: { _id: string; promedio_horas: number }[];
-  etiquetasFrecuentes: { _id: string; total: number }[];
   usuarios: { total: number; activos: number; porRol: { _id: string; total: number }[] };
 }
 
@@ -28,25 +22,17 @@ interface AdminUser {
   id: string;
   nombre: string;
   correo: string;
-  rol: 'reportante' | 'tecnico' | 'administrador' | 'superAdmin';
+  rol: 'reportante' | 'tecnico' | 'administrador' | 'auditor' | 'superAdmin';
   activo: boolean;
 }
 
-interface Moderacion {
-  _id: string;
-  codigo: string;
-  motivo: string;
-  comentario: string;
-  estado: string;
-  reportado_por: { nombre: string; correo: string };
-  fecha_creacion: string;
-}
-
 const etiquetaRol = (rol: AdminUser['rol']): string =>
-  rol === 'tecnico' ? 'Encargado' : rol === 'superAdmin' ? 'Superadministrador' : rol === 'administrador' ? 'Administrador' : 'Reportante';
+  rol === 'tecnico' ? 'Encargado' : rol === 'superAdmin' ? 'Superadministrador'
+    : rol === 'administrador' ? 'Administrador' : rol === 'auditor' ? 'Auditor' : 'Reportante';
 
-const apiRol = (etiqueta: string): 'reportante' | 'tecnico' | 'administrador' =>
-  etiqueta === 'Encargado' ? 'tecnico' : etiqueta === 'Administrador' ? 'administrador' : 'reportante';
+const apiRol = (etiqueta: string): 'reportante' | 'tecnico' | 'administrador' | 'auditor' =>
+  etiqueta === 'Encargado' ? 'tecnico' : etiqueta === 'Administrador' ? 'administrador'
+    : etiqueta === 'Auditor' ? 'auditor' : 'reportante';
 
 const etiquetaCategoria = (categoria: string): string => ({
   computo_redes: 'Cómputo / Redes',
@@ -57,7 +43,7 @@ const etiquetaCategoria = (categoria: string): string => ({
 @Component({
   selector: 'app-administracion',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, IconComponent, BaseChartDirective],
+  imports: [CommonModule, ReactiveFormsModule, IconComponent],
   templateUrl: './administracion.component.html',
   styleUrl: './administracion.component.scss',
 })
@@ -66,19 +52,17 @@ export class AdministracionComponent {
   private readonly fb = inject(FormBuilder);
   readonly resumen = signal<AdminSummary | null>(null);
   readonly usuarios = signal<AdminUser[]>([]);
-  readonly moderaciones = signal<Moderacion[]>([]);
   readonly cargando = signal(false);
   readonly mostrarFormulario = signal(false);
   readonly error = signal('');
   readonly aviso = signal('');
-  readonly perfiles = ['Reportante', 'Encargado', 'Administrador'];
-  readonly motivos: string[] = ['contenido_inapropiado', 'informacion_personal', 'duplicado', 'otro'];
+  readonly perfiles = ['Reportante', 'Encargado', 'Administrador', 'Auditor'];
 
   readonly formulario = this.fb.nonNullable.group({
     nombre: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
-    correo: ['', [Validators.required, Validators.email]],
+    correo: ['', [Validators.required, Validators.pattern(EMAIL_PATTERN)]],
     rol: ['reportante', Validators.required],
-    password: ['', [Validators.required, Validators.minLength(12), Validators.maxLength(128)]],
+    password: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(8)]],
   });
 
   readonly estadisticas = computed(() => {
@@ -101,15 +85,6 @@ export class AdministracionComponent {
     }));
   });
 
-  readonly barChartOptions: ChartOptions<'bar'> = { responsive: true, maintainAspectRatio: false };
-  readonly pieChartOptions: ChartOptions<'pie'> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { position: 'right' } },
-  };
-  barChartData: ChartConfiguration<'bar'>['data'] = { labels: [], datasets: [] };
-  pieChartData: ChartConfiguration<'pie'>['data'] = { labels: [], datasets: [] };
-
   constructor() {
     void this.cargar();
   }
@@ -118,15 +93,12 @@ export class AdministracionComponent {
     this.cargando.set(true);
     this.error.set('');
     try {
-      const [summary, users, queue] = await Promise.all([
+      const [summary, users] = await Promise.all([
         firstValueFrom(this.http.get<AdminSummary>(`${API_URL}/summary`)),
         firstValueFrom(this.http.get<{ data: AdminUser[] }>(`${API_URL}/users`)),
-        firstValueFrom(this.http.get<{ data: Moderacion[] }>(`${API_URL}/moderation`)),
       ]);
       this.resumen.set(summary);
       this.usuarios.set(users.data);
-      this.moderaciones.set(queue.data);
-      this.actualizarGraficas(summary);
     } catch (error) {
       this.error.set(this.mensajeError(error));
     } finally {
@@ -165,67 +137,12 @@ export class AdministracionComponent {
     }
   }
 
-  async resolver(reporte: Moderacion, decision: 'cerrado' | 'ocultar'): Promise<void> {
-    this.error.set('');
-    try {
-      await firstValueFrom(this.http.patch(
-        `${API_URL}/moderation/${encodeURIComponent(reporte._id)}`,
-        { decision },
-      ));
-      this.aviso.set(`${reporte.codigo}: revisión registrada.`);
-      await this.cargar();
-    } catch (error) {
-      this.error.set(this.mensajeError(error));
-    }
-  }
-
-  exportar(): void {
-    const summary = this.resumen();
-    if (!summary) return;
-    const filas = [
-      ['Indicador', 'Valor'],
-      ['Reportes totales', String(summary.total)],
-      ['Reportes activos', String(summary.abiertos)],
-      ['Cerrados', String(summary.cerrados)],
-      ['Prioridad alta', String(summary.prioridadAlta)],
-      ['Resueltos este mes', String(summary.resueltosMes)],
-      ['Usuarios activos', String(summary.usuarios.activos)],
-      ...summary.porCategoria.map((item) => [etiquetaCategoria(item._id), String(item.total)]),
-    ];
-    const csv = '\ufeff' + filas.map((fila) => fila.map((celda) => `"${celda.replace(/"/g, '""')}"`).join(',')).join('\n');
-    const enlace = document.createElement('a');
-    enlace.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    enlace.download = 'resumen-incidencias.csv';
-    enlace.click();
-    URL.revokeObjectURL(enlace.href);
-  }
-
   rolVisible(usuario: AdminUser): string {
     return etiquetaRol(usuario.rol);
   }
 
   iniciales(nombre: string): string {
     return nombre.split(/\s+/).slice(0, 2).map((parte) => parte[0] ?? '').join('').toUpperCase();
-  }
-
-  private actualizarGraficas(data: AdminSummary): void {
-    this.barChartData = {
-      labels: data.promedioPorEdificio.map((item) => item._id || 'Sin edificio'),
-      datasets: [{
-        data: data.promedioPorEdificio.map((item) => Math.round(item.promedio_horas * 10) / 10),
-        label: 'Horas promedio hasta cierre',
-        backgroundColor: '#0f766e',
-        borderRadius: 4,
-      }],
-    };
-    const colores = ['#0f766e', '#14b8a6', '#0ea5e9', '#f59e0b', '#ef4444'];
-    this.pieChartData = {
-      labels: data.etiquetasFrecuentes.map((item) => item._id),
-      datasets: [{
-        data: data.etiquetasFrecuentes.map((item) => item.total),
-        backgroundColor: colores,
-      }],
-    };
   }
 
   private mensajeError(error: unknown): string {

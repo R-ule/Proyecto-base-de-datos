@@ -109,7 +109,7 @@
 
         <hr />
 
-        <p class="etiqueta">Responsable de atención</p>
+        <p class="etiqueta">Supervisor responsable</p>
         @if (d.responsable; as r) {
           <div class="persona">
             <span class="avatar grande" aria-hidden="true">{{ r.iniciales }}</span>
@@ -117,6 +117,18 @@
           </div>
         } @else {
           <p class="sin-asignar">Aún sin asignar</p>
+        }
+
+        <hr />
+
+        <p class="etiqueta">Técnico asignado</p>
+        @if (d.tecnicoAsignado; as tecnico) {
+          <div class="persona">
+            <span class="avatar grande" aria-hidden="true">{{ tecnico.iniciales }}</span>
+            <span><strong>{{ tecnico.nombre }}</strong><small>{{ tecnico.area }}</small></span>
+          </div>
+        } @else {
+          <p class="sin-asignar">Aún no se asigna un técnico.</p>
         }
 
         <hr />

@@ -140,6 +140,8 @@ input[type='text'] {
   gap: 12px;
 }
 
+.enlaces-cuenta { display: grid; justify-items: end; gap: 6px; }
+
 /* Checkbox personalizado */
 .check {
   display: inline-flex;

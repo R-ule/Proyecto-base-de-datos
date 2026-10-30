@@ -1,6 +1,8 @@
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { formatearActualizacion, formatearAtencion } from '../../core/format';
 import { IconComponent } from '../../core/icon.component';
 import { IncidenciasService } from '../../core/incidencias.service';
@@ -14,6 +16,15 @@ const normalizar = (t: string) => t.normalize('NFD').replace(/\p{Diacritic}/gu, 
 const pesoPrioridad = (p?: Prioridad) => PRIORIDADES.indexOf(p ?? 'Media');
 const esHoy = (d: Date) => d.toDateString() === new Date().toDateString();
 const horaCorta = (d: Date) => d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+const API_ADMIN = 'http://localhost:3000/api/admin';
+
+interface UsuarioAsignable {
+  id: string;
+  nombre: string;
+  correo: string;
+  rol: 'reportante' | 'tecnico' | 'administrador' | 'auditor' | 'superAdmin';
+  activo: boolean;
+}
 
 @Component({
   selector: 'app-panel-atencion',
@@ -24,7 +35,16 @@ const horaCorta = (d: Date) => d.toLocaleTimeString('es-MX', { hour: '2-digit', 
 })
 export class PanelAtencionComponent {
   private readonly datos = inject(IncidenciasService);
-  readonly yo = inject(SesionService).usuario;
+  private readonly http = inject(HttpClient);
+  private readonly sesion = inject(SesionService);
+  readonly yo = this.sesion.usuario;
+  readonly esSupervisor = this.sesion.rol() === 'administrador';
+  readonly esTecnico = this.sesion.rol() === 'encargado';
+  readonly supervisores = signal<UsuarioAsignable[]>([]);
+  readonly tecnicos = signal<UsuarioAsignable[]>([]);
+  readonly errorAsignacion = signal('');
+  readonly avisoAsignacion = signal('');
+  readonly asignando = signal(false);
 
   readonly estados = ESTADOS;
   readonly prioridades = PRIORIDADES;
@@ -41,7 +61,7 @@ export class PanelAtencionComponent {
   });
 
   readonly pendientes = computed(() => this.todos().filter((t) => t.estado !== 'Resuelto'));
-  readonly mios = computed(() => this.pendientes().filter((t) => t.asignadoA === this.yo.nombre));
+  readonly mios = computed(() => this.pendientes().filter((t) => t.tecnicoAsignado?.correo === this.yo.correo));
   readonly resueltos = computed(() => this.todos().filter((t) => t.estado === 'Resuelto'));
 
   readonly resumen = computed(() => {
@@ -49,7 +69,7 @@ export class PanelAtencionComponent {
     const semana = this.datos.resueltosSemana();
     return {
       pendientes: p.length,
-      sinAsignar: p.filter((t) => !t.asignadoA).length,
+      sinAsignar: p.filter((t) => !t.tecnicoAsignado).length,
       alta: p.filter((t) => t.prioridad === 'Alta' || t.prioridad === 'Crítica').length,
       enAtencion: this.mios().filter((t) => t.estado === 'En atención').length,
       semana,
@@ -85,8 +105,8 @@ export class PanelAtencionComponent {
   readonly responsables = computed(() => [
     ...new Set(
       this.pendientes()
-        .map((t) => t.asignadoA)
-        .filter((n): n is string => !!n && n !== this.yo.nombre),
+        .map((t) => t.tecnicoAsignado?.nombre)
+        .filter((n): n is string => !!n),
     ),
   ].sort());
 
@@ -98,7 +118,9 @@ export class PanelAtencionComponent {
     const lista = this.base().filter(
       (t) =>
         (!this.prioridad() || t.prioridad === this.prioridad()) &&
-        (!r || (r === 'sin' ? !t.asignadoA : r === 'yo' ? t.asignadoA === this.yo.nombre : t.asignadoA === r)) &&
+        (!r || (r === 'sin' ? !t.tecnicoAsignado
+          : r === 'yo' ? t.tecnicoAsignado?.correo === this.yo.correo
+            : t.tecnicoAsignado?.nombre === r)) &&
         (!q || normalizar(`${t.titulo} ${t.folio} ${t.resumen ?? ''}`).includes(q)),
     );
     // Pendientes: primero la mayor prioridad y, a igual prioridad, la atención más próxima.
@@ -147,6 +169,7 @@ export class PanelAtencionComponent {
   readonly actualizando = signal(false);
 
   constructor() {
+    if (this.esSupervisor) void this.cargarUsuariosAsignables();
     // Al cambiar de ticket, el formulario se reinicia con el estado actual de ese ticket.
     effect(() => {
       const t = this.ticket();
@@ -200,14 +223,60 @@ export class PanelAtencionComponent {
   }
 
   responsableTexto(t: Incidencia): string {
-    if (!t.asignadoA) return 'Sin asignar';
-    return t.asignadoA === this.yo.nombre ? `Tú · ${t.asignadoA}` : t.asignadoA;
+    return t.responsable?.nombre ?? 'Sin asignar';
+  }
+
+  idResponsable(t: Incidencia): string {
+    return this.supervisores().find((usuario) => usuario.correo === t.responsable?.correo)?.id ?? '';
+  }
+
+  idTecnico(t: Incidencia): string {
+    return this.tecnicos().find((usuario) => usuario.correo === t.tecnicoAsignado?.correo)?.id ?? '';
+  }
+
+  async cambiarResponsable(folio: string, usuarioId: string): Promise<void> {
+    if (!usuarioId) return;
+    this.errorAsignacion.set('');
+    try {
+      await this.datos.asignarResponsable(folio, usuarioId);
+      this.avisoAsignacion.set(`${folio}: responsable actualizado.`);
+    } catch (error) {
+      this.errorAsignacion.set(this.mensajeError(error));
+    }
+  }
+
+  async cambiarTecnico(folio: string, usuarioId: string): Promise<void> {
+    if (!usuarioId) return;
+    this.errorAsignacion.set('');
+    try {
+      await this.datos.asignarTecnico(folio, usuarioId);
+      this.avisoAsignacion.set(`${folio}: técnico asignado.`);
+    } catch (error) {
+      this.errorAsignacion.set(this.mensajeError(error));
+    }
+  }
+
+  async tomarTicket(t: Incidencia): Promise<void> {
+    if (!this.esTecnico || t.tecnicoAsignado) return;
+    this.errorAsignacion.set('');
+    this.asignando.set(true);
+    try {
+      await this.datos.asignarTecnico(t.folio, this.yo.id);
+      this.avisoAsignacion.set(`${t.folio}: ahora está asignado a ti.`);
+    } catch (error) {
+      this.errorAsignacion.set(this.mensajeError(error));
+    } finally {
+      this.asignando.set(false);
+    }
   }
 
   get puedeGuardar(): boolean {
     const t = this.ticket();
     const { estado, avance } = this.form.getRawValue();
-    return !!t && this.form.valid && (estado !== t.estado || avance.trim().length > 0 || this.adjuntos().length > 0);
+    const asignadoAOtro = this.esTecnico && !!t?.tecnicoAsignado &&
+      t.tecnicoAsignado.correo !== this.yo.correo;
+    return !!t && !asignadoAOtro && this.form.valid &&
+      (estado !== t.estado || avance.trim().length > 0 || this.adjuntos().length > 0);
   }
 
   adjuntar(lista: FileList | null): void {
@@ -277,5 +346,26 @@ export class PanelAtencionComponent {
 
   horaActualizado(): string {
     return horaCorta(this.actualizado());
+  }
+
+  private async cargarUsuariosAsignables(): Promise<void> {
+    try {
+      const { data } = await firstValueFrom(this.http.get<{ data: UsuarioAsignable[] }>(`${API_ADMIN}/users`));
+      this.supervisores.set(data.filter((usuario) =>
+        usuario.activo && (usuario.rol === 'administrador' || usuario.rol === 'superAdmin'),
+      ));
+      this.tecnicos.set(data.filter((usuario) => usuario.activo && usuario.rol === 'tecnico'));
+    } catch (error) {
+      this.errorAsignacion.set(this.mensajeError(error));
+    }
+  }
+
+  private mensajeError(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      const body = error.error as { error?: string } | null;
+      if (body?.error) return body.error;
+      if (error.status === 0) return 'No se pudo conectar con la API.';
+    }
+    return error instanceof Error ? error.message : 'No se pudo actualizar la asignación.';
   }
 }

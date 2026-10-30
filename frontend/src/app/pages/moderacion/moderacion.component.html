@@ -1,0 +1,71 @@
+<header class="hero">
+  <div>
+    <p class="eyebrow">Gestión / Moderación</p>
+    <h1>Revisión de contenido</h1>
+    <p class="lead">Analiza reportes de contenido y consulta las tendencias de incidencias.</p>
+  </div>
+  <div class="acciones-cab">
+    <button type="button" class="btn-sec" (click)="cargar()" [disabled]="cargando()">
+      <app-icon name="refresh" [size]="18" /> Actualizar
+    </button>
+    <button type="button" class="btn-sec" (click)="exportar()" [disabled]="cargando()">
+      <app-icon name="download" [size]="18" /> Exportar
+    </button>
+  </div>
+</header>
+
+@if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+@if (aviso()) { <p class="ok" role="status">{{ aviso() }}</p> }
+@if (cargando() && !moderaciones().length) { <p role="status">Cargando datos de moderación…</p> }
+
+<section class="charts-grid" aria-label="Estadísticas de incidencias">
+  <div class="panel chart-panel">
+    <div class="panel-header"><h2>Reportes activos y pendientes</h2><span class="subtitle">Incidencias actuales frente a contenido por revisar</span></div>
+    <div class="chart-container">
+      <canvas baseChart [data]="conteosChartData" [options]="conteosChartOptions" type="bar"></canvas>
+    </div>
+  </div>
+  <div class="panel chart-panel">
+    <div class="panel-header"><h2>Tiempo promedio hasta cierre</h2><span class="subtitle">Horas, por edificio</span></div>
+    @if (barChartData.labels?.length) {
+      <div class="chart-container"><canvas baseChart [data]="barChartData" [options]="barChartOptions" type="bar"></canvas></div>
+    } @else { <p class="vacio">Aún no hay cierres con fecha disponible.</p> }
+  </div>
+  <div class="panel chart-panel">
+    <div class="panel-header"><h2>Etiquetas frecuentes</h2><span class="subtitle">Top 5 de incidencias</span></div>
+    @if (pieChartData.labels?.length) {
+      <div class="chart-container"><canvas baseChart [data]="pieChartData" [options]="pieChartOptions" type="pie"></canvas></div>
+    } @else { <p class="vacio">No hay etiquetas registradas.</p> }
+  </div>
+</section>
+
+<section class="card tabla">
+  <div class="cab fila-cab">
+    <div>
+      <h2>Cola de revisión <span class="pill aviso-pill">{{ moderaciones().length }} por revisar</span></h2>
+      <p class="sub">Reportes de contenido enviados por usuarios.</p>
+    </div>
+  </div>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th>Reporte</th><th>Motivo</th><th>Reportado por</th><th>Fecha</th><th>Acción</th></tr></thead>
+      <tbody>
+        @for (r of moderaciones(); track r._id) {
+          <tr>
+            <td><a class="folio" [routerLink]="['/mis-reportes', r.codigo]">{{ r.codigo }}</a><small>{{ r.comentario || 'Sin comentario' }}</small></td>
+            <td>{{ r.motivo }}</td>
+            <td>{{ r.reportado_por.nombre }}</td>
+            <td>{{ r.fecha_creacion | date:'short' }}</td>
+            <td class="acciones-fila">
+              <button type="button" class="enlace" (click)="resolver(r, 'cerrado')" [disabled]="estaResolviendo(r._id)">Cerrar</button>
+              <button type="button" class="enlace" (click)="resolver(r, 'ocultar')" [disabled]="estaResolviendo(r._id)">Ocultar reporte</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5" class="vacio">No hay reportes enviados para moderación. Se agregan aquí cuando alguien reporta contenido desde el detalle de una incidencia.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="pie-tabla"><span>{{ moderaciones().length }} reportes pendientes</span></div>
+</section>

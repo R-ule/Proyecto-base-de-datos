@@ -55,12 +55,12 @@ cd backend2
 npm run test:api
 ```
 
-La prueba comprueba `/health`, los rechazos de rutas protegidas sin token y el rechazo de credenciales inexistentes. Para comprobar también login y lecturas autenticadas, define `SMOKE_USER_EMAIL` y `SMOKE_USER_PASSWORD` en el entorno de la terminal antes de ejecutarla. No crea ni modifica incidencias.
+La prueba comprueba `/health`, los rechazos de rutas protegidas sin token, validación de registro y rechazo de credenciales inexistentes. Para comprobar también login y lecturas autenticadas, define `SMOKE_USER_EMAIL` y `SMOKE_USER_PASSWORD` en el entorno de la terminal antes de ejecutarla. No crea ni modifica usuarios ni incidencias.
 
 ## Estado de integración
 
-El inicio de sesión valida usuarios activos en MongoDB, compara contraseñas con bcrypt y emite JWT. Las rutas de la API requieren token, y los cambios de estado y administración también verifican roles en el servidor. Configura contraseñas válidas para las cuentas existentes; no hay una contraseña universal de prueba.
+El registro público crea cuentas de perfil reportante con contraseña cifrada de 6 a 8 caracteres y después inicia sesión con JWT. El correo acepta letras y números, puntos y un solo `@`, con un dominio válido (por ejemplo, `nombre@correo.com`). El login sigue aceptando contraseñas más largas para no bloquear cuentas ya existentes. El registro rechaza duplicados y no permite elegir perfiles técnicos o administrativos; esos perfiles solo los asigna un administrador.
 
-La aplicación consulta reportes, reportes propios y seguidos; permite crear reportes, cambiar estados, guardar comentarios, seguir reportes y enviar reportes de moderación. El panel administrativo consulta agregaciones, gestiona usuarios y resuelve la cola de moderación. Las evidencias se guardan en MongoDB y Supabase cuando el almacenamiento está configurado.
+La aplicación consulta reportes, reportes propios y seguidos; permite crear reportes, cambiar estados, guardar comentarios, seguir reportes y enviar reportes de moderación. Administración consulta indicadores y gestiona usuarios; Moderación tiene sus propias gráficas, cola de revisión, actualización y exportación. El perfil Auditor conserva las pantallas de reportante y puede revisar contenido, pero no administrar usuarios ni entrar al panel administrativo. Las evidencias se guardan en MongoDB y Supabase cuando el almacenamiento está configurado.
 
 Antes de publicar: configura credenciales reales y el bucket privado de Supabase, establece el origen permitido en `FRONTEND_ORIGIN`, valida TLS y configura el dominio de la API en el frontend. El archivo `.env` permanece local e ignorado por Git.

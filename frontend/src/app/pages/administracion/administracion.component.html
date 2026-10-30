@@ -1,16 +1,8 @@
 <header class="hero">
   <div>
-    <p class="eyebrow">Administración / Visión global</p>
+    <p class="eyebrow">Administración</p>
     <h1>Un sistema claro, un mejor servicio</h1>
-    <p class="lead">Indicadores, usuarios y reportes de revisión obtenidos del servidor.</p>
-  </div>
-  <div class="acciones-cab">
-    <button type="button" class="btn-sec" (click)="cargar()" [disabled]="cargando()">
-      <app-icon name="refresh" [size]="18" /> Actualizar
-    </button>
-    <button type="button" class="btn-sec" (click)="exportar()" [disabled]="!resumen()">
-      <app-icon name="download" [size]="18" /> Exportar resumen
-    </button>
+    <p class="lead">Indicadores, categorías y usuarios obtenidos del servidor.</p>
   </div>
 </header>
 
@@ -44,7 +36,6 @@
         <li class="vacio">No hay incidencias para resumir.</li>
       }
     </ul>
-    <div class="plazo"><span>Reportes en revisión</span><strong>{{ resumen()?.pendientesRevision ?? 0 }}</strong></div>
   </section>
 
   <section class="card tabla">
@@ -58,16 +49,17 @@
     @if (mostrarFormulario()) {
       <form class="crear-usuario" [formGroup]="formulario" (ngSubmit)="crearUsuario()">
         <label>Nombre<input formControlName="nombre" autocomplete="name" /></label>
-        <label>Correo<input type="email" formControlName="correo" autocomplete="email" /></label>
+        <label>Correo<input type="text" inputmode="email" formControlName="correo" autocomplete="email" /></label>
         <label>Perfil
           <select formControlName="rol">
             <option value="reportante">Reportante</option>
             <option value="tecnico">Encargado</option>
             <option value="administrador">Administrador</option>
+            <option value="auditor">Auditor</option>
           </select>
         </label>
-        <label>Contraseña temporal (mínimo 12 caracteres)
-          <input type="password" formControlName="password" autocomplete="new-password" />
+        <label>Contraseña temporal (6 a 8 caracteres)
+          <input type="password" formControlName="password" autocomplete="new-password" minlength="6" maxlength="8" />
         </label>
         <button type="submit" class="btn-primary" [disabled]="formulario.invalid">Crear cuenta</button>
       </form>
@@ -105,49 +97,3 @@
     <div class="pie-tabla"><span>{{ usuarios().length }} cuentas registradas</span></div>
   </section>
 </div>
-
-<section class="charts-grid">
-  <div class="panel chart-panel">
-    <div class="panel-header"><h2>Tiempo promedio hasta cierre</h2><span class="subtitle">Horas, por edificio</span></div>
-    @if (barChartData.labels?.length) {
-      <div class="chart-container"><canvas baseChart [data]="barChartData" [options]="barChartOptions" type="bar"></canvas></div>
-    } @else { <p class="vacio">Aún no hay cierres con fecha disponible.</p> }
-  </div>
-  <div class="panel chart-panel">
-    <div class="panel-header"><h2>Etiquetas frecuentes</h2><span class="subtitle">Top 5 de incidencias</span></div>
-    @if (pieChartData.labels?.length) {
-      <div class="chart-container"><canvas baseChart [data]="pieChartData" [options]="pieChartOptions" type="pie"></canvas></div>
-    } @else { <p class="vacio">No hay etiquetas registradas.</p> }
-  </div>
-</section>
-
-<section class="card tabla revision">
-  <div class="cab fila-cab">
-    <div>
-      <h2>Revisión de contenido <span class="pill aviso-pill">{{ moderaciones().length }} por revisar</span></h2>
-      <p class="sub">Reportes de contenido enviados por usuarios.</p>
-    </div>
-    <a class="enlace" routerLink="/moderacion">Ver cola</a>
-  </div>
-  <div class="tabla-scroll">
-    <table>
-      <thead><tr><th>Reporte</th><th>Motivo</th><th>Reportado por</th><th>Fecha</th><th>Acción</th></tr></thead>
-      <tbody>
-        @for (r of moderaciones(); track r._id) {
-          <tr>
-            <td><a class="folio" [routerLink]="['/mis-reportes', r.codigo]">{{ r.codigo }}</a><small>{{ r.comentario || 'Sin comentario' }}</small></td>
-            <td>{{ r.motivo }}</td>
-            <td>{{ r.reportado_por.nombre }}</td>
-            <td>{{ r.fecha_creacion | date:'short' }}</td>
-            <td class="acciones-cab">
-              <button type="button" class="enlace" (click)="resolver(r, 'cerrado')">Cerrar</button>
-              <button type="button" class="enlace" (click)="resolver(r, 'ocultar')">Ocultar reporte</button>
-            </td>
-          </tr>
-        } @empty {
-          <tr><td colspan="5" class="vacio">No hay contenido pendiente de revisión.</td></tr>
-        }
-      </tbody>
-    </table>
-  </div>
-</section>

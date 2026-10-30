@@ -205,6 +205,23 @@
   strong { font-weight: 500; color: var(--color-text); }
 }
 
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  &:hover { background: var(--color-bg); }
+}
+
 .top-actions { margin-left: auto; display: flex; align-items: center; gap: 16px; }
 
 .search {

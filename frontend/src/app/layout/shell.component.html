@@ -1,8 +1,8 @@
 <div class="shell">
   <aside class="sidebar" id="menu" [class.open]="menuAbierto()">
-    <a class="brand" [routerLink]="sesion.rutaInicial()" aria-label="nexo, ir al inicio">
-      <span class="brand-mark"><app-icon name="nexo" [size]="20" /></span>
-      <span class="brand-name">nexo</span>
+    <a class="brand" [routerLink]="sesion.rutaInicial()" aria-label="UTM-desk, ir al inicio">
+      <span class="brand-mark"><app-icon name="brand" [size]="20" /></span>
+      <span class="brand-name">UTM-desk</span>
     </a>
 
     <div class="service">
@@ -72,6 +72,10 @@
     <header class="topbar">
       <button type="button" class="icon-btn menu-btn" aria-label="Abrir menú" aria-controls="menu" (click)="menuAbierto.set(true)">
         <app-icon name="menu" />
+      </button>
+      <button type="button" class="btn-back" aria-label="Regresar a la pantalla anterior" (click)="volver()">
+        <app-icon name="arrow-left" [size]="16" />
+        <span>Volver</span>
       </button>
 
       <nav class="crumbs" aria-label="Ruta">

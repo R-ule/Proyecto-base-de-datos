@@ -38,9 +38,10 @@ export class ShellComponent {
         return [
           panel,
           { ruta: '/administracion', texto: 'Administración', icono: 'shield' },
-          { ruta: '/usuarios', texto: 'Usuarios', icono: 'users' },
           { ruta: '/moderacion', texto: 'Moderación', icono: 'filter' },
         ];
+      case 'auditor':
+        return [{ ruta: '/moderacion', texto: 'Moderación', icono: 'filter' }];
       default:
         return [];
     }
@@ -48,12 +49,35 @@ export class ShellComponent {
 
   readonly menuAbierto = signal(false);
   readonly menuPerfil = signal(false);
+  readonly rutasVisitadas = signal<string[]>([]);
+  readonly puedeVolver = computed(() => this.rutasVisitadas().length > 1);
   private readonly buscador = viewChild<ElementRef<HTMLInputElement>>('buscador');
 
   constructor() {
+    this.registrarRuta(this.router.url);
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((event) => this.registrarRuta(event.urlAfterRedirects));
     void this.incidencias.cargar().catch((error: unknown) =>
       console.error('No se pudieron cargar las incidencias desde la API:', error),
     );
+  }
+
+  volver(): void {
+    const rutas = this.rutasVisitadas();
+    if (rutas.length > 1) {
+      const destino = rutas[rutas.length - 2];
+      this.rutasVisitadas.set(rutas.slice(0, -1));
+      void this.router.navigateByUrl(destino);
+      return;
+    }
+    void this.router.navigateByUrl(this.sesion.rutaInicial());
+  }
+
+  private registrarRuta(url: string): void {
+    const ruta = url.split(/[?#]/, 1)[0] || '/';
+    const rutas = this.rutasVisitadas();
+    if (rutas[rutas.length - 1] !== ruta) this.rutasVisitadas.set([...rutas, ruta]);
   }
 
   /** Nombre de la sección actual para el breadcrumb (viene de `data.label` en las rutas). */

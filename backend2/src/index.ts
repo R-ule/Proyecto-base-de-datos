@@ -38,7 +38,7 @@ const allowedOrigins = new Set([
 let db: ReturnType<MongoClient['db']>;
 let storage: SupabaseClient | undefined;
 
-type UserRole = 'reportante' | 'tecnico' | 'administrador' | 'superAdmin';
+type UserRole = 'reportante' | 'tecnico' | 'administrador' | 'auditor' | 'superAdmin';
 
 interface AuthenticatedUser {
     id: string;
@@ -77,6 +77,9 @@ interface IncidenciaDocument extends Document {
     horas_invertidas: number;
     historial_seguimiento: SeguimientoEntry[];
     evidencias: EvidenciaDocument[];
+    responsable_atencion?: { nombre: string; correo: string };
+    tecnico_asignado?: { nombre: string; correo: string };
+    asignado_a?: { nombre: string; correo: string };
     reportante?: { nombre: string; correo: string };
     fecha_creacion?: Date;
 }
@@ -111,6 +114,8 @@ const incidenciaSchema = z.object({
     }).optional(),
 });
 
+const EMAIL_REGEX = /^[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*@[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)+$/;
+
 const actualizarEstadoSchema = z.object({
     estado: z.enum(["abierta", "en_proceso", "en_espera", "resuelta", "cerrada"]),
     comentario: z.string().min(3, "El comentario de seguimiento es obligatorio"),
@@ -122,19 +127,25 @@ const actualizarEstadoSchema = z.object({
 });
 
 const loginSchema = z.object({
-    correo: z.string().email(),
-    password: z.string().min(1),
+    correo: z.string().trim().regex(EMAIL_REGEX),
+    password: z.string().min(6).max(128),
 });
+
+const registroSchema = z.object({
+    nombre: z.string().trim().min(2).max(100),
+    correo: z.string().trim().regex(EMAIL_REGEX).transform((correo) => correo.toLowerCase()),
+    password: z.string().min(6).max(8),
+}).strict();
 
 const usuarioNuevoSchema = z.object({
     nombre: z.string().min(2).max(100),
-    correo: z.string().email(),
-    rol: z.enum(['reportante', 'tecnico', 'administrador']),
-    password: z.string().min(12).max(128),
+    correo: z.string().trim().regex(EMAIL_REGEX),
+    rol: z.enum(['reportante', 'tecnico', 'administrador', 'auditor']),
+    password: z.string().min(6).max(8),
 });
 
 const rolSchema = z.object({
-    rol: z.enum(['reportante', 'tecnico', 'administrador']),
+    rol: z.enum(['reportante', 'tecnico', 'administrador', 'auditor']),
 });
 
 const moderacionSchema = z.object({
@@ -147,13 +158,45 @@ const decisionModeracionSchema = z.object({
     nota: z.string().max(500).optional().default(''),
 });
 
+const asignacionUsuarioSchema = z.object({
+    usuarioId: z.string().min(1),
+});
+
 const rolNormalizado = (rol: string): UserRole =>
-    rol === 'superAdmin' || rol === 'administrador' || rol === 'tecnico' || rol === 'reportante'
+    rol === 'superAdmin' || rol === 'administrador' || rol === 'tecnico' || rol === 'auditor' || rol === 'reportante'
         ? rol
         : 'reportante';
 
 const esAdministrador = (rol: UserRole): boolean =>
     rol === 'administrador' || rol === 'superAdmin';
+
+const esModerador = (rol: UserRole): boolean =>
+    esAdministrador(rol) || rol === 'auditor';
+
+const obtenerMetricasModeracion = async () => {
+    const [promedioPorEdificio, etiquetasFrecuentes, reportesActivos, pendientesRevision] = await Promise.all([
+        db.collection('incidencias_campus').aggregate([
+            { $match: { fecha_cierre: { $type: 'date' } } },
+            { $group: {
+                _id: '$ubicacion.edificio',
+                promedio_horas: { $avg: { $divide: [{ $subtract: ['$fecha_cierre', '$fecha_creacion'] }, 3600000] } },
+            } },
+            { $sort: { promedio_horas: -1 } },
+            { $limit: 8 },
+        ]).toArray(),
+        db.collection('incidencias_campus').aggregate([
+            { $unwind: '$tags' },
+            { $group: { _id: '$tags', total: { $sum: 1 } } },
+            { $sort: { total: -1 } },
+            { $limit: 5 },
+        ]).toArray(),
+        db.collection('incidencias_campus').countDocuments({
+            estado: { $in: ['abierta', 'en_proceso', 'en_espera'] },
+        }),
+        db.collection('moderacion_reportes').countDocuments({ estado: 'pendiente' }),
+    ]);
+    return { promedioPorEdificio, etiquetasFrecuentes, reportesActivos, pendientesRevision };
+};
 
 const autenticar: express.RequestHandler = async (req, res, next) => {
     const auth = req.headers.authorization;
@@ -194,6 +237,15 @@ const requerirAdministrador: express.RequestHandler = (req, res, next) => {
     const user = (req as AuthenticatedRequest).user;
     if (!user || !esAdministrador(user.rol)) {
         res.status(403).json({ error: 'Se requiere perfil administrador.' });
+        return;
+    }
+    next();
+};
+
+const requerirModerador: express.RequestHandler = (req, res, next) => {
+    const user = (req as AuthenticatedRequest).user;
+    if (!user || !esModerador(user.rol)) {
+        res.status(403).json({ error: 'Se requiere perfil auditor o administrador.' });
         return;
     }
     next();
@@ -242,6 +294,10 @@ async function startServer() {
         await client.connect();
         db = client.db(DB_NAME);
         console.log(`Conectado exitosamente a MongoDB Atlas: ${DB_NAME}`);
+        await db.collection<UserDocument>('usuarios').createIndex(
+            { correo: 1 },
+            { unique: true, name: 'idx_unico_correo' },
+        );
         await db.collection('seguimientos_reportes').createIndex(
             { codigo: 1, correo: 1 },
             { unique: true, name: 'idx_seguimiento_codigo_correo' },
@@ -292,6 +348,39 @@ async function startServer() {
                 }
                 console.error('Error al iniciar sesión:', error);
                 return res.status(500).json({ error: 'No se pudo iniciar sesión.' });
+            }
+        });
+
+        app.post('/api/auth/register', async (req: express.Request, res: express.Response) => {
+            const parsed = registroSchema.safeParse(req.body);
+            if (!parsed.success) {
+                return res.status(400).json({
+                    error: 'Ingresa un nombre, correo válido (solo letras, números, puntos y @) y contraseña de entre 6 y 8 caracteres.',
+                });
+            }
+
+            try {
+                const user = {
+                    nombre: parsed.data.nombre,
+                    correo: parsed.data.correo,
+                    rol: 'reportante' as const,
+                    activo: true,
+                    password_hash: await bcrypt.hash(parsed.data.password, 12),
+                };
+                const result = await db.collection<UserDocument>('usuarios').insertOne(user);
+                const createdUser: UserDocument = { ...user, _id: result.insertedId };
+                const token = jwt.sign(
+                    { correo: createdUser.correo, nombre: createdUser.nombre, rol: createdUser.rol },
+                    JWT_SECRET,
+                    { subject: createdUser._id.toString(), expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
+                );
+                return res.status(201).json({ token, usuario: usuarioPublico(createdUser) });
+            } catch (error) {
+                if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+                    return res.status(409).json({ error: 'Ya existe una cuenta con ese correo.' });
+                }
+                console.error('Error al registrar usuario:', error);
+                return res.status(500).json({ error: 'No se pudo crear la cuenta.' });
             }
         });
 
@@ -406,28 +495,14 @@ async function startServer() {
             const inicioMes = new Date();
             inicioMes.setDate(1);
             inicioMes.setHours(0, 0, 0, 0);
-            const [estados, categorias, edificios, etiquetas, usuarios, abiertos, cerrados, prioridadAlta, resueltosMes, total, usuariosActivos] = await Promise.all([
+            const metricasModeracion = obtenerMetricasModeracion();
+            const [estados, categorias, usuarios, abiertos, cerrados, prioridadAlta, resueltosMes, total, usuariosActivos] = await Promise.all([
                 db.collection('incidencias_campus').aggregate([
                     { $group: { _id: '$estado', total: { $sum: 1 } } },
                 ]).toArray(),
                 db.collection('incidencias_campus').aggregate([
                     { $group: { _id: '$categoria', total: { $sum: 1 } } },
                     { $sort: { total: -1 } },
-                ]).toArray(),
-                db.collection('incidencias_campus').aggregate([
-                    { $match: { fecha_cierre: { $type: 'date' } } },
-                    { $group: {
-                        _id: '$ubicacion.edificio',
-                        promedio_horas: { $avg: { $divide: [{ $subtract: ['$fecha_cierre', '$fecha_creacion'] }, 3600000] } },
-                    } },
-                    { $sort: { promedio_horas: -1 } },
-                    { $limit: 8 },
-                ]).toArray(),
-                db.collection('incidencias_campus').aggregate([
-                    { $unwind: '$tags' },
-                    { $group: { _id: '$tags', total: { $sum: 1 } } },
-                    { $sort: { total: -1 } },
-                    { $limit: 5 },
                 ]).toArray(),
                 db.collection<UserDocument>('usuarios').aggregate([
                     { $match: { activo: true } },
@@ -446,6 +521,7 @@ async function startServer() {
                 db.collection('incidencias_campus').countDocuments(),
                 db.collection('usuarios').countDocuments({ activo: true }),
             ]);
+            const { promedioPorEdificio, etiquetasFrecuentes } = await metricasModeracion;
             const totalUsuarios = await db.collection('usuarios').countDocuments();
             const pendientesRevision = await db.collection('moderacion_reportes').countDocuments({ estado: 'pendiente' });
             return res.json({
@@ -457,10 +533,14 @@ async function startServer() {
                 pendientesRevision,
                 porEstado: estados,
                 porCategoria: categorias,
-                promedioPorEdificio: edificios,
-                etiquetasFrecuentes: etiquetas,
+                promedioPorEdificio,
+                etiquetasFrecuentes,
                 usuarios: { total: totalUsuarios, activos: usuariosActivos, porRol: usuarios },
             });
+        });
+
+        app.get('/api/moderacion/summary', requerirModerador, async (_req, res) => {
+            return res.json(await obtenerMetricasModeracion());
         });
 
         app.get('/api/admin/users', requerirAdministrador, async (_req, res) => {
@@ -473,7 +553,7 @@ async function startServer() {
 
         app.post('/api/admin/users', requerirAdministrador, async (req, res) => {
             const parsed = usuarioNuevoSchema.safeParse(req.body);
-            if (!parsed.success) return res.status(400).json({ error: 'Revisa nombre, correo, rol y contraseña (mínimo 12 caracteres).' });
+            if (!parsed.success) return res.status(400).json({ error: 'Revisa nombre, correo, rol y contraseña (de 6 a 8 caracteres).' });
             const correo = parsed.data.correo.toLowerCase();
             const duplicate = await db.collection<UserDocument>('usuarios').findOne({ correo }, { projection: { _id: 1 } });
             if (duplicate) return res.status(409).json({ error: 'Ya existe una cuenta con ese correo.' });
@@ -506,15 +586,18 @@ async function startServer() {
             return res.json({ message: 'Perfil actualizado.' });
         });
 
-        app.get('/api/admin/moderation', requerirAdministrador, async (req, res) => {
-            const queue = await db.collection('moderacion_reportes')
+        const obtenerColaModeracion: express.RequestHandler = async (req, res) => {
+            const data = await db.collection('moderacion_reportes')
                 .find(req.query.incluirCerrados === 'true' ? {} : { estado: 'pendiente' })
                 .sort({ fecha_creacion: -1 })
                 .toArray();
-            return res.json({ total: queue.length, data: queue });
-        });
+            return res.json({ total: data.length, data });
+        };
+        app.get('/api/moderacion', requerirModerador, obtenerColaModeracion);
+        app.get('/api/admin/moderation', requerirAdministrador, obtenerColaModeracion);
 
-        app.patch('/api/admin/moderation/:id', requerirAdministrador, async (req: AuthenticatedRequest, res) => {
+        const resolverModeracion: express.RequestHandler = async (req, res) => {
+            const authenticatedRequest = req as AuthenticatedRequest;
             const id = routeParam(req.params.id);
             if (!ObjectId.isValid(id)) return res.status(400).json({ error: 'El folio de moderación no es válido.' });
             const parsed = decisionModeracionSchema.safeParse(req.body);
@@ -524,14 +607,16 @@ async function startServer() {
                 { $set: {
                     estado: parsed.data.decision,
                     nota_revision: parsed.data.nota,
-                    revisado_por: { nombre: req.user!.nombre, correo: req.user!.correo },
+                    revisado_por: { nombre: authenticatedRequest.user!.nombre, correo: authenticatedRequest.user!.correo },
                     fecha_revision: new Date(),
                 } },
                 { returnDocument: 'after' },
             );
             if (!registro) return res.status(404).json({ error: 'El reporte de moderación ya fue atendido o no existe.' });
             return res.json({ data: registro });
-        });
+        };
+        app.patch('/api/moderacion/:id', requerirModerador, resolverModeracion);
+        app.patch('/api/admin/moderation/:id', requerirAdministrador, resolverModeracion);
 
         app.post(
             '/api/incidencias/:codigo/evidencias',
@@ -698,11 +783,86 @@ async function startServer() {
             }
         });
 
+        app.patch('/api/incidencias/:codigo/responsable', requerirAdministrador, async (req, res) => {
+            const codigo = routeParam(req.params.codigo);
+            const parsed = asignacionUsuarioSchema.safeParse(req.body);
+            if (!parsed.success || !ObjectId.isValid(parsed.data.usuarioId)) {
+                return res.status(400).json({ error: 'El supervisor seleccionado no es válido.' });
+            }
+            const supervisor = await db.collection<UserDocument>('usuarios').findOne({
+                _id: new ObjectId(parsed.data.usuarioId),
+                activo: true,
+                rol: { $in: ['administrador', 'superAdmin'] },
+            });
+            if (!supervisor) return res.status(400).json({ error: 'El responsable debe tener perfil administrador o superadministrador.' });
+            const incidencia = await db.collection<IncidenciaDocument>('incidencias_campus').findOneAndUpdate(
+                { codigo },
+                { $set: { responsable_atencion: { nombre: supervisor.nombre, correo: supervisor.correo } } },
+                { returnDocument: 'after' },
+            );
+            if (!incidencia) return res.status(404).json({ error: `No existe el reporte ${codigo}.` });
+            return res.json({ data: incidencia });
+        });
+
+        app.patch('/api/incidencias/:codigo/tecnico', esTecnico, async (req: AuthenticatedRequest, res) => {
+            const codigo = routeParam(req.params.codigo);
+            const parsed = asignacionUsuarioSchema.safeParse(req.body);
+            if (!parsed.success || !ObjectId.isValid(parsed.data.usuarioId)) {
+                return res.status(400).json({ error: 'El técnico seleccionado no es válido.' });
+            }
+            const esSupervisor = esAdministrador(req.user!.rol);
+            if (!esSupervisor && parsed.data.usuarioId !== req.user!.id) {
+                return res.status(403).json({ error: 'Un técnico solo puede tomar una tarea para sí mismo.' });
+            }
+            const tecnico = await db.collection<UserDocument>('usuarios').findOne({
+                _id: new ObjectId(parsed.data.usuarioId),
+                activo: true,
+                rol: 'tecnico',
+            });
+            if (!tecnico) return res.status(400).json({ error: 'La persona seleccionada debe tener perfil técnico.' });
+
+            const filtro: Record<string, unknown> = {
+                codigo,
+                estado: { $nin: ['resuelta', 'cerrada'] },
+            };
+            if (!esSupervisor) {
+                filtro.$or = [
+                    { 'tecnico_asignado.correo': tecnico.correo },
+                    { tecnico_asignado: { $exists: false } },
+                    { tecnico_asignado: null },
+                ];
+            }
+            const incidencia = await db.collection<IncidenciaDocument>('incidencias_campus').findOneAndUpdate(
+                filtro,
+                { $set: { tecnico_asignado: { nombre: tecnico.nombre, correo: tecnico.correo } } },
+                { returnDocument: 'after' },
+            );
+            if (!incidencia) {
+                const existe = await db.collection<IncidenciaDocument>('incidencias_campus').findOne({ codigo });
+                if (!existe) return res.status(404).json({ error: `No existe el reporte ${codigo}.` });
+                if (existe.estado === 'resuelta' || existe.estado === 'cerrada') {
+                    return res.status(409).json({ error: 'No se puede asignar un reporte resuelto.' });
+                }
+                return res.status(409).json({ error: 'Este reporte ya fue tomado por otro técnico.' });
+            }
+            return res.json({ data: incidencia });
+        });
+
         // ── 4. PATCH /api/incidencias/:codigo/estado (Actualizar estatus y bitácora) ────────
         app.patch('/api/incidencias/:codigo/estado', esTecnico, async (req: AuthenticatedRequest, res: express.Response) => {
             try {
                 const codigo = routeParam(req.params.codigo);
                 const { estado, comentario, horas_invertidas } = actualizarEstadoSchema.parse(req.body);
+                const tecnicoAsignado = !esAdministrador(req.user!.rol);
+                const incidenciaActual = await db.collection<IncidenciaDocument>('incidencias_campus').findOne(
+                    { codigo },
+                    { projection: { tecnico_asignado: 1 } },
+                );
+                if (!incidenciaActual) return res.status(404).json({ error: `Incidencia con código ${codigo} no encontrada` });
+                if (tecnicoAsignado && incidenciaActual.tecnico_asignado &&
+                    incidenciaActual.tecnico_asignado.correo !== req.user!.correo) {
+                    return res.status(409).json({ error: 'Este reporte ya está asignado a otro técnico.' });
+                }
 
                 const seguimientoEntry: SeguimientoEntry = {
                     fecha: new Date(),
@@ -725,11 +885,22 @@ async function startServer() {
                                     [seguimientoEntry],
                                 ],
                             },
-                            ...(estado !== 'abierta' ? {
-                                asignado_a: {
+                            ...(estado !== 'abierta' && tecnicoAsignado ? {
+                                tecnico_asignado: {
                                     $ifNull: [
-                                        '$asignado_a',
+                                        '$tecnico_asignado',
                                         { $literal: { nombre: req.user!.nombre, correo: req.user!.correo } },
+                                    ],
+                                },
+                            } : {}),
+                            ...(estado !== 'abierta' && !tecnicoAsignado ? {
+                                responsable_atencion: {
+                                    $ifNull: [
+                                        '$responsable_atencion',
+                                        { $ifNull: [
+                                            '$asignado_a',
+                                            { $literal: { nombre: req.user!.nombre, correo: req.user!.correo } },
+                                        ] },
                                     ],
                                 },
                             } : {}),
@@ -739,14 +910,23 @@ async function startServer() {
                     ...(!estaCerrada ? [{ $unset: 'fecha_cierre' }] : []),
                 ];
 
+                const filtro: Record<string, unknown> = { codigo };
+                if (tecnicoAsignado) {
+                    filtro.$or = [
+                        { 'tecnico_asignado.correo': req.user!.correo },
+                        { tecnico_asignado: { $exists: false } },
+                        { tecnico_asignado: null },
+                    ];
+                }
                 const resultado = await db.collection<IncidenciaDocument>('incidencias_campus').findOneAndUpdate(
-                    { codigo },
+                    filtro,
                     actualizacion,
                     { returnDocument: 'after' }
                 );
 
                 const docActualizado = resultado;
                 if (!docActualizado) {
+                    if (tecnicoAsignado) return res.status(409).json({ error: 'Este reporte ya fue tomado por otro técnico.' });
                     return res.status(404).json({ error: `Incidencia con código ${codigo} no encontrada` });
                 }
 

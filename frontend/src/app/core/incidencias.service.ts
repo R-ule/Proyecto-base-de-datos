@@ -37,6 +37,8 @@ interface ApiIncidencia {
   horas_invertidas: number;
   fecha_creacion: string;
   fecha_cierre?: string;
+  responsable_atencion?: { nombre: string; correo: string };
+  tecnico_asignado?: { nombre: string; correo: string };
   asignado_a?: { nombre: string; correo: string };
 }
 
@@ -119,6 +121,7 @@ export class IncidenciasService {
   private readonly version = signal(0);
   private cargada = false;
   private cargaEnCurso?: Promise<void>;
+  private identidadCargada?: string;
 
   readonly revision = this.version.asReadonly();
   readonly cargando = signal(false);
@@ -131,6 +134,19 @@ export class IncidenciasService {
   };
 
   async cargar(force = false): Promise<void> {
+    const identidad = this.sesion.correo();
+    if (!identidad) {
+      this.limpiarCache();
+      this.identidadCargada = undefined;
+      this.cargada = false;
+      return;
+    }
+    if (this.identidadCargada !== identidad) {
+      this.limpiarCache();
+      this.identidadCargada = identidad;
+      this.cargada = false;
+      this.cargaEnCurso = undefined;
+    }
     if (this.cargaEnCurso) {
       await this.cargaEnCurso;
       if (force) return this.cargar(true);
@@ -140,12 +156,13 @@ export class IncidenciasService {
 
     this.cargando.set(true);
     this.error.set('');
-    this.cargaEnCurso = Promise.all([
+    const carga = Promise.all([
       firstValueFrom(this.http.get<ApiListResponse>(API_URL)),
       firstValueFrom(this.http.get<ApiSeguimientosResponse>(`${API_ROOT}/seguimientos`)),
       firstValueFrom(this.http.get<ApiListResponse>(`${API_ROOT}/mis-reportes`)),
     ])
       .then(([{ data }, seguidos, mios]) => {
+        if (this.sesion.correo() !== identidad) return;
         this.documentos.clear();
         for (const documento of data) this.documentos.set(documento.codigo, documento);
         this.seguidos.clear();
@@ -158,15 +175,18 @@ export class IncidenciasService {
         this.version.update((actual) => actual + 1);
       })
       .catch((error: unknown) => {
-        this.error.set(this.mensajeError(error));
+        if (this.sesion.correo() === identidad) this.error.set(this.mensajeError(error));
         throw error;
       })
       .finally(() => {
-        this.cargando.set(false);
-        this.cargaEnCurso = undefined;
+        if (this.cargaEnCurso === carga) {
+          this.cargando.set(false);
+          this.cargaEnCurso = undefined;
+        }
       });
+    this.cargaEnCurso = carga;
 
-    return this.cargaEnCurso;
+    return carga;
   }
 
   detalle(folio: string): DetalleIncidencia | undefined {
@@ -182,9 +202,22 @@ export class IncidenciasService {
       if (estado) hitos[estado] = fecha(entrada.fecha);
     }
 
-    const asignado = documento.asignado_a;
+    const asignado = documento.responsable_atencion ?? documento.asignado_a;
     const responsable: Persona | undefined = asignado
-      ? { nombre: asignado.nombre, iniciales: iniciales(asignado.nombre), area: 'Soporte técnico' }
+      ? {
+          nombre: asignado.nombre,
+          iniciales: iniciales(asignado.nombre),
+          area: 'Supervisión',
+          correo: asignado.correo,
+        }
+      : undefined;
+    const tecnicoAsignado: Persona | undefined = documento.tecnico_asignado
+      ? {
+          nombre: documento.tecnico_asignado.nombre,
+          iniciales: iniciales(documento.tecnico_asignado.nombre),
+          area: 'Soporte técnico',
+          correo: documento.tecnico_asignado.correo,
+        }
       : undefined;
 
     return {
@@ -211,6 +244,7 @@ export class IncidenciasService {
         url: evidencia.url,
       })),
       responsable,
+      tecnicoAsignado,
       atencionEstimada: incidencia.estado === 'Resuelto' ? 'Completada' : 'Por definir',
       planta: documento.ubicacion.aula,
       hitos,
@@ -281,6 +315,22 @@ export class IncidenciasService {
       }),
     );
     this.documentos.set(folio, respuesta.data);
+    await this.cargar(true);
+  }
+
+  async asignarResponsable(folio: string, usuarioId: string): Promise<void> {
+    await firstValueFrom(this.http.patch(
+      `${API_URL}/${encodeURIComponent(folio)}/responsable`,
+      { usuarioId },
+    ));
+    await this.cargar(true);
+  }
+
+  async asignarTecnico(folio: string, usuarioId: string): Promise<void> {
+    await firstValueFrom(this.http.patch(
+      `${API_URL}/${encodeURIComponent(folio)}/tecnico`,
+      { usuarioId },
+    ));
     await this.cargar(true);
   }
 
@@ -423,7 +473,23 @@ export class IncidenciasService {
       actualizada: fechaActualizacion(documento),
       siguiendo: this.seguidos.has(documento.codigo),
       prioridad: PRIORIDAD_LABEL[documento.prioridad] ?? 'Media',
-      asignadoA: documento.asignado_a?.nombre,
+      asignadoA: documento.tecnico_asignado?.nombre,
+      tecnicoAsignado: documento.tecnico_asignado
+        ? {
+            nombre: documento.tecnico_asignado.nombre,
+            iniciales: iniciales(documento.tecnico_asignado.nombre),
+            area: 'Soporte técnico',
+            correo: documento.tecnico_asignado.correo,
+          }
+        : undefined,
+      responsable: (documento.responsable_atencion ?? documento.asignado_a)
+        ? {
+            nombre: (documento.responsable_atencion ?? documento.asignado_a)!.nombre,
+            iniciales: iniciales((documento.responsable_atencion ?? documento.asignado_a)!.nombre),
+            area: 'Supervisión',
+            correo: (documento.responsable_atencion ?? documento.asignado_a)!.correo,
+          }
+        : undefined,
       resumen: documento.descripcion.slice(0, 120),
       detalle: documento.historial_seguimiento.at(-1)?.comentario,
     };
@@ -457,6 +523,18 @@ export class IncidenciasService {
 
   private reemplazar<T>(destino: T[], origen: T[]): void {
     destino.splice(0, destino.length, ...origen);
+  }
+
+  private limpiarCache(): void {
+    this.documentos.clear();
+    this.comentarios.clear();
+    this.conteoSeguidores.clear();
+    this.seguidos.clear();
+    this.reemplazar(this.listas.mios, []);
+    this.reemplazar(this.listas.siguiendo, []);
+    this.reemplazar(this.listas.todas, []);
+    this.error.set('');
+    this.version.update((actual) => actual + 1);
   }
 
   private mensajeError(error: unknown): string {

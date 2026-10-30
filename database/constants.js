@@ -54,6 +54,7 @@ export const ROLES = /** @type {const} */ ([
   'reportante',
   'tecnico',
   'administrador',
+  'auditor',
   'superAdmin',
 ]);
 
