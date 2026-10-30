@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { IconComponent, IconName } from '../../core/icon.component';
 import { EMAIL_PATTERN } from '../../core/validation';
 
-const API_URL = 'http://localhost:3000/api/admin';
+const API_URL = 'https://proyecto-base-de-datos.onrender.com/api/admin';
 
 interface AdminSummary {
   total: number;

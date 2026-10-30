@@ -7,7 +7,7 @@ import { ChartConfiguration, ChartOptions } from 'chart.js';
 import { firstValueFrom } from 'rxjs';
 import { IconComponent } from '../../core/icon.component';
 
-const API_URL = 'http://localhost:3000/api/moderacion';
+const API_URL = 'https://proyecto-base-de-datos.onrender.com/api/moderacion';
 
 interface Moderacion {
   _id: string;
