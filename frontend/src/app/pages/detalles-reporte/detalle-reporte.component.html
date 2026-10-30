@@ -1,0 +1,165 @@
+@if (detalle(); as d) {
+  <header class="hero">
+    <div>
+      <p class="eyebrow"><a routerLink="/mis-reportes">Mis reportes</a> / {{ d.folio }}</p>
+      <h1>{{ d.titulo }}</h1>
+      <p class="lead">Reportado por {{ d.reportante }} · {{ completa(d.creada) }} · {{ d.categoria }}</p>
+    </div>
+    <div class="hero-acciones">
+      <button type="button" class="btn-sec" [class.on]="d.siguiendo" [attr.aria-pressed]="d.siguiendo" (click)="alternarSeguimiento()">
+        <app-icon [name]="d.siguiendo ? 'bookmark-check' : 'bookmark'" [size]="18" />
+        {{ d.siguiendo ? 'Siguiendo' : 'Seguir' }}
+      </button>
+      <button type="button" class="btn-sec" (click)="compartir()">
+        <app-icon [name]="enlaceCopiado() ? 'check' : 'share'" [size]="18" />
+        {{ enlaceCopiado() ? 'Enlace copiado' : 'Compartir' }}
+      </button>
+    </div>
+  </header>
+
+  <!-- Progreso -->
+  <ol class="card pasos" aria-label="Progreso del reporte">
+    @for (p of pasos(); track p.nombre; let ultimo = $last) {
+      <li [class]="'paso ' + p.estado" [attr.aria-current]="p.estado === 'actual' ? 'step' : null">
+        <span class="paso-icono">
+          @if (p.estado === 'hecho') { <app-icon name="check" [size]="16" /> }
+          @else if (p.estado === 'actual') { <app-icon name="wrench" [size]="16" /> }
+        </span>
+        <span class="paso-texto">
+          <strong>{{ p.nombre }}</strong>
+          <small>{{ p.fecha ? hito(p.fecha) : p.pendiente }}</small>
+        </span>
+      </li>
+      @if (!ultimo) { <li class="linea" [class.llena]="p.estado === 'hecho'" aria-hidden="true"></li> }
+    }
+  </ol>
+
+  <div class="layout">
+    <!-- Columna principal -->
+    <div class="principal">
+      <section class="card bloque">
+        <h2>Descripción del reportante</h2>
+        <p class="texto">{{ d.descripcion }}</p>
+
+        @if (d.etiquetas.length) {
+          <ul class="etiquetas">
+            @for (t of d.etiquetas; track t) { <li>{{ t }}</li> }
+          </ul>
+        }
+
+        @for (ev of d.evidencias ?? []; track ev.nombre + ev.fecha.getTime()) {
+          <div class="evidencia">
+            <div class="foto">
+              @if (ev.url && ev.tipo.startsWith('image/')) { <img [src]="ev.url" alt="Fotografía de evidencia del reporte" /> }
+              @else { <app-icon name="image" [size]="32" /> }
+            </div>
+            <div class="ev-info">
+              <strong>Archivo adjunto</strong>
+              <span class="ev-nombre">{{ ev.nombre }}</span>
+              <small>{{ ev.tipo }} · {{ ev.peso }} · {{ completa(ev.fecha) }}</small>
+              @if (ev.url) { <a [href]="ev.url" target="_blank" rel="noopener">Abrir archivo</a> }
+            </div>
+          </div>
+        }
+      </section>
+
+      <section class="card bloque">
+        @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+        <div class="bloque-top">
+          <h2>Seguimiento</h2>
+          <small>Actividad pública</small>
+        </div>
+
+        <ol class="tiempo">
+          @for (e of d.historial; track $index) {
+            <li class="entrada">
+              <span class="avatar" aria-hidden="true">{{ e.iniciales }}</span>
+              <div class="entrada-cuerpo">
+                <div class="entrada-top">
+                  <strong>{{ e.titulo }}</strong>
+                  <small>{{ hora(e.fecha) }}</small>
+                </div>
+                <p>{{ e.texto }}</p>
+                @if (e.estado) { <span [class]="'badge ' + claseEstado[e.estado]">{{ e.estado }}</span> }
+              </div>
+            </li>
+          }
+        </ol>
+
+        <form class="comentar" (submit)="$event.preventDefault(); comentar()">
+          <input type="text" [formControl]="comentario" maxlength="500" placeholder="Añade información útil para el seguimiento..." aria-label="Añadir un comentario" />
+          <button type="submit" class="btn-sec" [disabled]="comentario.invalid">Comentar</button>
+        </form>
+      </section>
+    </div>
+
+    <!-- Columna lateral -->
+    <aside class="lateral">
+      <section class="card bloque info">
+        <h2>Información del ticket</h2>
+
+        <div class="fila">
+          <span>Estado actual</span>
+          <span [class]="'badge ' + claseEstado[d.estado]">{{ d.estado }}</span>
+        </div>
+        <div class="fila">
+          <span>Prioridad</span>
+          <span [class]="'badge prioridad-' + d.prioridad.toLowerCase()">{{ d.prioridad }}</span>
+        </div>
+
+        <hr />
+
+        <p class="etiqueta">Responsable de atención</p>
+        @if (d.responsable; as r) {
+          <div class="persona">
+            <span class="avatar grande" aria-hidden="true">{{ r.iniciales }}</span>
+            <span><strong>{{ r.nombre }}</strong><small>{{ r.area }}</small></span>
+          </div>
+        } @else {
+          <p class="sin-asignar">Aún sin asignar</p>
+        }
+
+        <hr />
+
+        <div class="fila">
+          <span>Atención estimada</span>
+          <strong>{{ d.atencionEstimada }}</strong>
+        </div>
+        <p class="nota">El tiempo puede cambiar según el diagnóstico. Te avisaremos de cada avance.</p>
+      </section>
+
+      <section class="card bloque ubicacion">
+        <h2><app-icon name="map-pin" [size]="18" /> Ubicación</h2>
+        <strong>{{ d.edificio }}</strong>
+        <span>{{ d.planta ? d.planta + ' · ' : '' }}{{ d.area }}</span>
+        @if (d.referencia) { <small>{{ d.referencia }}</small> }
+      </section>
+
+      @if (d.siguiendo) {
+        <section class="card seguir activo">
+          <h2><app-icon name="bell" [size]="18" /> Estás siguiendo este reporte</h2>
+          <p>Recibirás notificaciones cuando cambie el estado o haya una nueva respuesta.</p>
+          <small>{{ textoSeguidores() }}</small>
+        </section>
+      } @else {
+        <section class="card seguir">
+          <h2><app-icon name="bell" [size]="18" /> Sigue este reporte</h2>
+          <p>Recibe notificaciones cuando cambie el estado o haya una nueva respuesta.</p>
+          <small>{{ textoSeguidores() }}</small>
+          <button type="button" class="btn-sec" (click)="alternarSeguimiento()">Seguir reporte</button>
+        </section>
+      }
+
+      <button type="button" class="reportar" [disabled]="reportado()" (click)="reportarContenido()">
+        <app-icon name="flag" [size]="16" />
+        {{ reportado() ? 'Gracias, revisaremos este reporte' : 'Reportar contenido inapropiado' }}
+      </button>
+    </aside>
+  </div>
+} @else {
+  <section class="card vacio">
+    <h1>No encontramos este reporte</h1>
+    <p>Revisa que el folio sea correcto o vuelve al inicio para ver tus reportes.</p>
+    <a class="btn-primary" routerLink="/inicio">Volver al inicio</a>
+  </section>
+}

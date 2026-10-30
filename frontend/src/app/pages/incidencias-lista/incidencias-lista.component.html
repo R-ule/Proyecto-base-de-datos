@@ -1,0 +1,54 @@
+<header class="cabecera">
+  <div>
+    <p class="eyebrow">Incidencias del campus</p>
+    <h1>{{ titulo() }}</h1>
+    <p>Datos sincronizados con el sistema de incidencias.</p>
+  </div>
+  <a class="boton" routerLink="/levantar-reporte">Crear reporte</a>
+</header>
+
+@if (datos.error()) { <p class="error" role="alert">{{ datos.error() }}</p> }
+
+<section class="filtros" aria-label="Filtros de reportes">
+  <label>
+    <span>Buscar</span>
+    <input type="search" [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" placeholder="Folio, título o edificio" />
+  </label>
+  <label>
+    <span>Estado</span>
+    <select [value]="estado()" (change)="estado.set($any($event.target).value)">
+      <option value="">Todos los estados</option>
+      <option value="Recibido">Recibido</option>
+      <option value="Asignado">Asignado</option>
+      <option value="En atención">En atención</option>
+      <option value="Resuelto">Resuelto</option>
+    </select>
+  </label>
+  <span class="total">{{ lista().length }} reportes</span>
+</section>
+
+<section class="reportes" aria-live="polite">
+  @for (reporte of lista(); track reporte.folio) {
+    <article class="reporte">
+      <div class="contenido">
+        <div class="meta"><span>{{ reporte.folio }}</span><span>{{ actualizado(reporte.actualizada) }}</span></div>
+        <h2><a [routerLink]="['/mis-reportes', reporte.folio]">{{ reporte.titulo }}</a></h2>
+        <p>{{ reporte.resumen }}</p>
+        <div class="etiquetas"><span>{{ reporte.categoria }}</span><span>{{ reporte.edificio }} · {{ reporte.area }}</span></div>
+      </div>
+      <div class="acciones">
+        <span class="estado" [attr.data-estado]="reporte.estado">{{ reporte.estado }}</span>
+        @if (modo() === 'explorar') {
+          <button type="button" class="seguir" [attr.aria-pressed]="reporte.siguiendo" (click)="alternarSeguimiento(reporte.folio)">
+            {{ reporte.siguiendo ? 'Dejar de seguir' : 'Seguir' }}
+          </button>
+        }
+      </div>
+    </article>
+  } @empty {
+    <div class="vacio">
+      @if (datos.cargando()) { <p>Cargando reportes…</p> }
+      @else { <p>No hay reportes que coincidan con los filtros.</p> }
+    </div>
+  }
+</section>

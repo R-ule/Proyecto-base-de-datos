@@ -1,0 +1,155 @@
+<!-- Encabezado -->
+<header class="hero">
+  <div>
+    <p class="eyebrow">Mi espacio / {{ hoy }}</p>
+    <h1>{{ saludo }}, {{ usuario.primerNombre }}</h1>
+    <p class="lead">Cada reporte ayuda a que nuestros espacios funcionen mejor.</p>
+  </div>
+  <a class="btn-primary" routerLink="/levantar-reporte">
+    <app-icon name="plus" [size]="18" />
+    Levantar reporte
+  </a>
+</header>
+
+<!-- Resumen -->
+<section class="stats" aria-label="Resumen de mis reportes">
+  <article class="stat">
+    <div class="stat-top"><span>Mis reportes</span><app-icon name="copy" /></div>
+    <strong>{{ resumen().total }}</strong>
+    <p>{{ resumen().activos }} requieren seguimiento</p>
+  </article>
+  <article class="stat">
+    <div class="stat-top"><span>Activos</span><app-icon name="loader" /></div>
+    <strong>{{ resumen().activos }}</strong>
+    <p>{{ resumen().recibidos }} recibido · {{ resumen().enProceso }} en proceso</p>
+  </article>
+  <article class="stat">
+    <div class="stat-top"><span>Resueltos</span><app-icon name="check-circle" /></div>
+    <strong>{{ resumen().resueltos }}</strong>
+    <p>Gracias por reportar</p>
+  </article>
+  <article class="stat">
+    <div class="stat-top"><span>Siguiendo</span><app-icon name="bookmark" /></div>
+    <strong>{{ resumen().siguiendo }}</strong>
+    <p>{{ resumen().actualizacionesRecientes }} actualizaciones en los últimos 7 días</p>
+  </article>
+</section>
+
+<!-- Tabla de reportes -->
+<section class="card tabla" aria-label="Reportes">
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" [attr.aria-selected]="pestana() === 'mios'" [class.on]="pestana() === 'mios'" (click)="cambiarPestana('mios')">
+      Mis reportes <span class="pill">{{ listas.mios.length }}</span>
+    </button>
+    <button type="button" role="tab" [attr.aria-selected]="pestana() === 'siguiendo'" [class.on]="pestana() === 'siguiendo'" (click)="cambiarPestana('siguiendo')">
+      Siguiendo · {{ listas.siguiendo.length }}
+    </button>
+    <button type="button" role="tab" [attr.aria-selected]="pestana() === 'todas'" [class.on]="pestana() === 'todas'" (click)="cambiarPestana('todas')">
+      Todas las incidencias
+    </button>
+  </div>
+
+  <div class="filtros">
+    <label class="campo campo-busqueda">
+      <app-icon name="search" [size]="16" />
+      <input #q type="search" placeholder="Buscar por título o folio" aria-label="Buscar por título o folio" [value]="busqueda()" (input)="buscar(q.value)" />
+    </label>
+
+    <label class="campo campo-select">
+      <app-icon name="chevron-down" [size]="16" />
+      <select #est aria-label="Filtrar por estado" (change)="filtrarEstado(est.value)">
+        <option value="">Todos los estados</option>
+        @for (e of estados; track e) { <option [value]="e" [selected]="estado() === e">{{ e }}</option> }
+      </select>
+    </label>
+
+    <label class="campo campo-select">
+      <app-icon name="chevron-down" [size]="16" />
+      <select #cat aria-label="Filtrar por categoría" (change)="filtrarCategoria(cat.value)">
+        <option value="">Categoría</option>
+        @for (c of categorias(); track c) { <option [value]="c" [selected]="categoria() === c">{{ c }}</option> }
+      </select>
+    </label>
+
+    <span class="orden">Más recientes primero</span>
+  </div>
+
+  <div class="grid cabecera" aria-hidden="true">
+    <span>Reporte</span><span>Ubicación</span><span>Estado</span><span>Actualización</span><span></span>
+  </div>
+
+  @for (i of visibles(); track i.folio) {
+    <div class="grid fila">
+      <div class="celda-titulo">
+                <a class="titulo-link" [routerLink]="['/mis-reportes', i.folio]"><strong>{{ i.titulo }}</strong></a>
+        <span>{{ i.folio }} · {{ i.categoria }}</span>
+      </div>
+      <div class="celda-ubicacion">
+        <span>{{ i.edificio }}</span>
+        <small>{{ i.area }}</small>
+      </div>
+      <div><span class="badge" [class]="'badge ' + claseEstado[i.estado]">{{ i.estado }}</span></div>
+      <span class="fecha">{{ fecha(i.actualizada) }}</span>
+      <a class="abrir" [routerLink]="['/mis-reportes', i.folio]" [attr.aria-label]="'Abrir reporte ' + i.folio"><app-icon name="arrow-up-right" [size]="16" /></a>
+    </div>
+  } @empty {
+    <p class="sin-resultados">No hay reportes con esos filtros. Prueba quitando alguno.</p>
+  }
+
+  <footer class="paginacion">
+    <span>Mostrando {{ visibles().length }} de {{ filtradas().length }} reportes</span>
+    <nav aria-label="Paginación">
+      <button type="button" class="pg" aria-label="Página anterior" [disabled]="pagina() === 1" (click)="irA(pagina() - 1)"><app-icon name="chevron-left" [size]="16" /></button>
+      @for (p of paginas(); track p) {
+        <button type="button" class="pg num" [class.on]="p === pagina()" [attr.aria-current]="p === pagina() ? 'page' : null" (click)="irA(p)">{{ p }}</button>
+      }
+      <button type="button" class="pg" aria-label="Página siguiente" [disabled]="pagina() === totalPaginas()" (click)="irA(pagina() + 1)"><app-icon name="chevron-right" [size]="16" /></button>
+    </nav>
+  </footer>
+</section>
+
+<!-- Paneles inferiores -->
+<div class="paneles">
+  <section class="card panel">
+    <header>
+      <h2>Reportes que sigues</h2>
+      <a routerLink="/siguiendo">Ver los {{ listas.siguiendo.length }} <app-icon name="arrow-right" [size]="14" /></a>
+    </header>
+    @for (i of listas.siguiendo.slice(0, 2); track i.folio) {
+      <div class="item">
+        <app-icon name="bookmark-check" />
+        <div class="item-texto">
+          <strong>{{ i.titulo }}</strong>
+          <span>{{ i.folio }} · {{ i.edificio }} · {{ i.area }}</span>
+        </div>
+        <div class="item-lado">
+          @if (i.nuevo) { <span class="badge nuevo">Nuevo</span> }
+          <small>{{ i.detalle }}</small>
+        </div>
+      </div>
+    }
+  </section>
+
+  <section class="card panel">
+    <header>
+      <h2>Últimas novedades</h2>
+      <a routerLink="/mis-reportes">Ver actividad <app-icon name="arrow-right" [size]="14" /></a>
+    </header>
+    @for (n of novedades(); track n.detalle) {
+      <div class="item">
+        <app-icon [name]="n.icono" />
+        <div class="item-texto">
+          <strong>{{ n.titulo }}</strong>
+          <span>{{ n.detalle }}</span>
+          <small>{{ n.cuando }}</small>
+        </div>
+      </div>
+    }
+  </section>
+</div>
+
+<p class="aviso">
+  <app-icon name="info" [size]="16" />
+  ¿La falla ya fue reportada? Búscala y síguela para recibir actualizaciones sin duplicar reportes.
+  <a routerLink="/explorar">Explorar reportes <app-icon name="arrow-right" [size]="14" /></a>
+</p>

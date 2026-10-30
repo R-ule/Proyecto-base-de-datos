@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "5b328fb3-85c1-4e53-86b1-3a40d927b3cb",
     "name": "UTM Desk API",
-    "description": "Colección inicial para probar la API del proyecto.",
+    "description": "Health check, autenticación JWT y lecturas autenticadas de UTM Desk.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -19,6 +19,7 @@
               "});",
               "pm.test('la API está disponible', function () {",
               "    pm.expect(pm.response.json()).to.have.property('status', 'ok');",
+              "pm.expect(pm.response.json()).to.have.property('database', 'connected');",
               "});"
             ]
           }
@@ -27,15 +28,87 @@
       "request": {
         "method": "GET",
         "header": [],
-        "url": "{{baseUrl}}/api/health"
+        "url": "{{baseUrl}}/health"
+      },
+      "response": []
+    },
+    {
+      "name": "Iniciar sesión",
+      "request": {
+        "method": "POST",
+        "auth": { "type": "noauth" },
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"correo\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      },
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('credenciales válidas devuelven un token', function () {",
+            "    pm.response.to.have.status(200);",
+            "    const body = pm.response.json();",
+            "    pm.expect(body.token).to.be.a('string');",
+            "    pm.environment.set('token', body.token);",
+            "});"
+          ]
+        }
+      }],
+      "response": []
+    },
+    {
+      "name": "Sesión actual",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/auth/me"
+      },
+      "response": []
+    },
+    {
+      "name": "Listar incidencias",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/incidencias"
+      },
+      "response": []
+    },
+    {
+      "name": "Mis reportes",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/mis-reportes"
       },
       "response": []
     }
   ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:3000"
+    },
+    {
+      "key": "email",
+      "value": ""
+    },
+    {
+      "key": "password",
+      "value": ""
+    },
+    {
+      "key": "token",
+      "value": ""
     }
   ]
 }
